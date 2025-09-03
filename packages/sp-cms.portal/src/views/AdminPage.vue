@@ -40,5 +40,8 @@ onMounted(() => {
 <style scoped>
 .admin {
   text-align: center;
+  h3 {
+    margin: 40px 0 0;
+  }
 }
 </style>
