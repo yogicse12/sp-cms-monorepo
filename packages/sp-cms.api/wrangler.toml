@@ -12,4 +12,4 @@ bucket_name = "sp-cms-storage"
 [[d1_databases]]
 binding = "DB"
 database_name = "sp_cms"
-database_id = "your-database-id-here"
+database_id = "d8ee72d1-eea7-46e7-91ff-585db4d10f32"
