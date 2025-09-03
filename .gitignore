@@ -35,7 +35,7 @@ packages/*/node_modules
 **/.temp
 **/.tmp
 **/.cache
-**/.claude
+.claude
 
 # Type definitions
 **/*.tsbuildinfo
