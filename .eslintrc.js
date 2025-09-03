@@ -15,6 +15,9 @@ module.exports = {
       files: ['*.vue'],
       extends: ['plugin:vue/vue3-essential'],
       parser: 'vue-eslint-parser',
+      rules: {
+        'vue/multi-word-component-names': 'off',
+      },
     },
   ],
   rules: {

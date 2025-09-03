@@ -1,0 +1,11 @@
+node_modules
+dist
+.pnpm-store
+coverage
+.nuxt
+.next
+.vscode
+.idea
+*.log
+pnpm-lock.yaml
+wrangler.toml
