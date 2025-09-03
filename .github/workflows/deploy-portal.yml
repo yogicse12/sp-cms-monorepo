@@ -1,0 +1,42 @@
+name: Deploy Portal
+
+on:
+    push:
+      branches: [ main ]
+      paths: [ 'packages/sp-cms.portal/**' ]
+    workflow_dispatch:
+
+jobs:
+    deploy:
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '18'
+
+        - name: Setup pnpm
+          uses: pnpm/action-setup@v2
+          with:
+            version: latest
+
+        - name: Install dependencies
+          run: pnpm install --frozen-lockfile
+
+        - name: Build Portal
+          run: pnpm --filter sp-cms.portal build
+          env:
+            VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+
+        - name: Deploy to Cloudflare Pages
+          uses: cloudflare/pages-action@v1
+          with:
+            apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+            accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+            projectName: 'sp-cms-portal'
+            directory: './packages/sp-cms.portal/dist'
+            gitHubToken: ${{ secrets.GITHUB_TOKEN }}

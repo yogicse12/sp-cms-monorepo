@@ -1,0 +1,19 @@
+version: 2
+updates:
+    - package-ecosystem: "npm"
+      directory: "/"
+      schedule:
+        interval: "weekly"
+      open-pull-requests-limit: 10
+
+    - package-ecosystem: "npm"
+      directory: "/packages/sp-cms.api"
+      schedule:
+        interval: "weekly"
+      open-pull-requests-limit: 5
+
+    - package-ecosystem: "npm"
+      directory: "/packages/sp-cms.portal"
+      schedule:
+        interval: "weekly"
+      open-pull-requests-limit: 5

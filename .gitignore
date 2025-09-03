@@ -1,0 +1,40 @@
+# Global directories
+packages/*/node_modules
+**/node_modules
+**/dist
+**/.nuxt
+**/.output
+**/.cache
+
+# OS files
+.DS_Store
+**/.DS_Store
+
+# Log files
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Editor directories
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build directories
+**/build
+**/.temp
+**/.tmp
+**/.cache
+
+# Type definitions
+**/*.tsbuildinfo

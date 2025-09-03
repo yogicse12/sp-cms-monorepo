@@ -1,0 +1,29 @@
+{
+    "name": "sp-cms-monorepo",
+    "version": "1.0.0",
+    "description": "",
+    "private": true,
+    "author": "Yogendra Yadav",
+    "license": "ISC",
+    "scripts": {
+      "dev:api": "pnpm --filter sp-cms.api dev",
+      "dev:portal": "pnpm --filter sp-cms.portal dev",
+      "dev:api:debug": "pnpm --filter sp-cms.api dev:debug",
+      "build": "pnpm -r build",
+      "test": "pnpm -r test",
+      "lint": "eslint . --ext .js,.jsx,.vue",
+      "lint:fix": "eslint . --ext .js,.jsx,.vue --fix",
+      "format": "prettier --write .",
+      "format:check": "prettier --check .",
+      "type-check": "pnpm -r type-check"
+    },
+    "devDependencies": {
+      "eslint": "^8.57.1",
+      "eslint-config-prettier": "^9.1.0",
+      "eslint-plugin-vue": "^9.32.0",
+      "prettier": "^3.4.2"
+    },
+    "dependencies": {
+      "wrangler": "3.107.3"
+    }
+  }
