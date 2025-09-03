@@ -17,3 +17,9 @@ const incrementCounter = () => {
   count.value++;
 };
 </script>
+
+<style scoped>
+.home {
+  text-align: center;
+}
+</style>

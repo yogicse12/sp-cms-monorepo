@@ -36,3 +36,9 @@ onMounted(() => {
   loadContent();
 });
 </script>
+
+<style scoped>
+.admin {
+  text-align: center;
+}
+</style>
