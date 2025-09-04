@@ -46,7 +46,10 @@ auth.get('/debug/tables', async c => {
     ).all();
     return c.json({ tables: tables.results });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      500
+    );
   }
 });
 
@@ -68,7 +71,10 @@ auth.post('/debug/migrate', async c => {
 
     return c.json({ message: 'Users table created successfully' });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      500
+    );
   }
 });
 
@@ -80,7 +86,10 @@ auth.get('/debug/users', async c => {
     ).all();
     return c.json({ users: users.results });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      500
+    );
   }
 });
 
