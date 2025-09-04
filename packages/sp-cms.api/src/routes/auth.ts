@@ -7,7 +7,7 @@ const auth = new Hono<{ Bindings: Env }>();
 auth.post('/register', async c => {
   try {
     const requestData = await c.req.json();
-    const result = await AuthService.registerUser(requestData);
+    const result = await AuthService.registerUser(requestData, c.env);
 
     return c.json(result, 201);
   } catch (error) {
@@ -20,7 +20,7 @@ auth.post('/register', async c => {
 auth.post('/login', async c => {
   try {
     const requestData = await c.req.json();
-    const result = await AuthService.login(requestData);
+    const result = await AuthService.login(requestData, c.env);
 
     return c.json(result, 200);
   } catch (error) {
@@ -63,6 +63,16 @@ auth.post('/debug/migrate', async (c) => {
     `).run();
     
     return c.json({ message: 'Users table created successfully' });
+  } catch (error) {
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// Debug route to check users in table
+auth.get('/debug/users', async (c) => {
+  try {
+    const users = await c.env.DB.prepare("SELECT id, email, name, created_at FROM users").all();
+    return c.json({ users: users.results });
   } catch (error) {
     return c.json({ error: error.message }, 500);
   }

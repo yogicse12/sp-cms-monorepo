@@ -1,4 +1,5 @@
 import * as bcrypt from 'bcryptjs';
+import type { Env } from '../types/env';
 
 export interface RegisterRequest {
   email: string;
@@ -31,9 +32,6 @@ export interface RegisterResponse {
   user: Omit<User, 'passwordHash'>;
 }
 
-// Mock user store (replace with actual database)
-const userStore: User[] = [];
-
 export class AuthService {
   static validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -60,7 +58,7 @@ export class AuthService {
     return null;
   }
 
-  static async registerUser(data: RegisterRequest): Promise<RegisterResponse> {
+  static async registerUser(data: RegisterRequest, env: Env): Promise<RegisterResponse> {
     const validationError = this.validateRegistrationInput(data);
     if (validationError) {
       throw new Error(validationError);
@@ -68,30 +66,34 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    const user: User = {
-      id: crypto.randomUUID(),
-      email: data.email.toLowerCase().trim(),
-      name: data.name,
-      passwordHash: hashedPassword,
-      createdAt: new Date().toISOString(),
-    };
+    const userId = crypto.randomUUID();
+    const normalizedEmail = data.email.toLowerCase().trim();
+    const createdAt = new Date().toISOString();
 
-    // Save to mock store (replace with database)
-    userStore.push(user);
+    // Save to D1 database
+    const result = await env.DB.prepare(`
+      INSERT INTO users (id, email, name, password_hash, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(userId, normalizedEmail, data.name, hashedPassword, createdAt).run();
+    
+    console.log('DB insert result:', result);
+    if (!result.success) {
+      throw new Error(`Database error: ${result.error}`);
+    }
 
     return {
       success: true,
       message: 'User registered successfully',
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        createdAt: user.createdAt,
+        id: userId,
+        email: normalizedEmail,
+        name: data.name,
+        createdAt,
       },
     };
   }
 
-  static async login(data: LoginRequest): Promise<LoginResponse> {
+  static async login(data: LoginRequest, env: Env): Promise<LoginResponse> {
     if (!data.email || !data.password) {
       throw new Error('Email and password are required');
     }
@@ -102,8 +104,13 @@ export class AuthService {
 
     const normalizedEmail = data.email.toLowerCase().trim();
 
-    // Find user by email
-    const user = userStore.find(u => u.email === normalizedEmail);
+    // Find user by email in D1 database
+    const user = await env.DB.prepare(`
+      SELECT id, email, name, password_hash, created_at
+      FROM users 
+      WHERE email = ? AND is_active = 1
+    `).bind(normalizedEmail).first();
+
     if (!user) {
       throw new Error('User not found');
     }
@@ -111,7 +118,7 @@ export class AuthService {
     // Check password
     const isValidPassword = await bcrypt.compare(
       data.password,
-      user.passwordHash
+      user.password_hash
     );
     if (!isValidPassword) {
       throw new Error('Invalid password');
@@ -127,7 +134,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
-        createdAt: user.createdAt,
+        createdAt: user.created_at,
       },
     };
   }
