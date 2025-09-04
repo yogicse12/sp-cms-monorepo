@@ -129,7 +129,7 @@ export class AuthService {
     // Check password
     const isValidPassword = await bcrypt.compare(
       data.password,
-      user.password_hash
+      user.password_hash as string
     );
     if (!isValidPassword) {
       throw new Error('Invalid password');
@@ -142,10 +142,10 @@ export class AuthService {
       message: 'Login successful',
       token,
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        createdAt: user.created_at,
+        id: user.id as string,
+        email: user.email as string,
+        name: user.name as string,
+        createdAt: user.created_at as string,
       },
     };
   }

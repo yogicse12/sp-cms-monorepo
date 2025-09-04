@@ -3,3 +3,7 @@ export interface Env {
   BUCKET: R2Bucket;
   ENVIRONMENT: string;
 }
+
+declare global {
+  interface CloudflareEnv extends Env {}
+}
