@@ -16,7 +16,7 @@ import AppHeader from '@/components/Layout/AppHeader.vue';
   margin-left: 16rem;
   margin-top: 60px;
   padding: 20px 24px;
-  background: #fafafa;
+  background: #f4f4f4;
   min-height: calc(100vh - 60px);
   width: calc(100% - 16rem);
 }

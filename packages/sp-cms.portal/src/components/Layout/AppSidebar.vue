@@ -1,14 +1,14 @@
 <template>
   <div class="sidebar">
     <div class="brand">
-      <h1>CYDAPTIV</h1>
+      <img src="@/assets/images/logo-5e.png" alt="" />
     </div>
     <div class="menu mt-8">
       <ul>
         <li>
-          <router-link to="/tickets">
-            <LayoutList :stroke-width="1" :size="20" />
-            <span class="pl-8">Tickets</span>
+          <router-link to="/blog">
+            <Newspaper :stroke-width="1" :size="20" />
+            <span class="pl-8">Blog</span>
           </router-link>
         </li>
         <li>
@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { LayoutList, CircleUserRound, LogOut } from 'lucide-vue-next';
+import { Newspaper, CircleUserRound, LogOut } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.js';
 
@@ -59,7 +59,7 @@ const logout = () => {
   padding: 8px 24px;
 }
 .sidebar .brand {
-  padding: 16px 0;
+  padding: 8px 0;
 }
 .sidebar .brand h1 {
   font-size: 2rem;
@@ -67,6 +67,10 @@ const logout = () => {
   color: #313131;
   text-align: center;
   text-transform: uppercase;
+}
+.sidebar .brand img {
+  max-height: 40px;
+  object-fit: contain;
 }
 .sidebar .menu ul li {
   cursor: pointer;

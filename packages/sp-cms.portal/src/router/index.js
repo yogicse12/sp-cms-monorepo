@@ -4,6 +4,7 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import LoginPage from '@/views/auth/LoginPage.vue';
 import HomeView from '@/views/HomeView.vue';
+import BlogView from '@/views/BlogView.vue';
 import ProfilePage from '@/views/ProfilePage.vue';
 
 const router = createRouter({
@@ -30,6 +31,13 @@ const router = createRouter({
           path: '/',
           name: 'Home',
           component: HomeView,
+          meta: { requiresAuth: true },
+          redirect: '/blog',
+        },
+        {
+          path: '/blog',
+          name: 'Blog',
+          component: BlogView,
           meta: { requiresAuth: true },
         },
         {
