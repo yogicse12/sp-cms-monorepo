@@ -1,22 +1,21 @@
 <template>
   <div id="app">
-    <nav>
-      <router-link to="/"> Home </router-link>
-      <router-link to="/admin"> Admin </router-link>
-    </nav>
-    <main>
-      <router-view />
-    </main>
+    <router-view />
   </div>
 </template>
 
-<script setup>
-// Composition API setup
+<script>
+export default {
+  name: 'App',
+};
 </script>
 
 <style>
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;

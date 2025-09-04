@@ -1,9 +1,0 @@
-@use 'variables' as *;
-@use 'common';
-@use 'form';
-
-body {
-  font-family: $font-family-1;
-  font-size: $font-size-base;
-  color: $dark;
-}
