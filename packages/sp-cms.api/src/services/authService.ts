@@ -58,7 +58,10 @@ export class AuthService {
     return null;
   }
 
-  static async registerUser(data: RegisterRequest, env: Env): Promise<RegisterResponse> {
+  static async registerUser(
+    data: RegisterRequest,
+    env: Env
+  ): Promise<RegisterResponse> {
     const validationError = this.validateRegistrationInput(data);
     if (validationError) {
       throw new Error(validationError);
@@ -71,11 +74,15 @@ export class AuthService {
     const createdAt = new Date().toISOString();
 
     // Save to D1 database
-    const result = await env.DB.prepare(`
+    const result = await env.DB.prepare(
+      `
       INSERT INTO users (id, email, name, password_hash, created_at)
       VALUES (?, ?, ?, ?, ?)
-    `).bind(userId, normalizedEmail, data.name, hashedPassword, createdAt).run();
-    
+    `
+    )
+      .bind(userId, normalizedEmail, data.name, hashedPassword, createdAt)
+      .run();
+
     console.log('DB insert result:', result);
     if (!result.success) {
       throw new Error(`Database error: ${result.error}`);
@@ -105,11 +112,15 @@ export class AuthService {
     const normalizedEmail = data.email.toLowerCase().trim();
 
     // Find user by email in D1 database
-    const user = await env.DB.prepare(`
+    const user = await env.DB.prepare(
+      `
       SELECT id, email, name, password_hash, created_at
       FROM users 
       WHERE email = ? AND is_active = 1
-    `).bind(normalizedEmail).first();
+    `
+    )
+      .bind(normalizedEmail)
+      .first();
 
     if (!user) {
       throw new Error('User not found');

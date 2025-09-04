@@ -39,9 +39,11 @@ auth.post('/login', async c => {
 });
 
 // Debug route to check database structure
-auth.get('/debug/tables', async (c) => {
+auth.get('/debug/tables', async c => {
   try {
-    const tables = await c.env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+    const tables = await c.env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table'"
+    ).all();
     return c.json({ tables: tables.results });
   } catch (error) {
     return c.json({ error: error.message }, 500);
@@ -49,9 +51,10 @@ auth.get('/debug/tables', async (c) => {
 });
 
 // Migration route to create users table
-auth.post('/debug/migrate', async (c) => {
+auth.post('/debug/migrate', async c => {
   try {
-    await c.env.DB.prepare(`
+    await c.env.DB.prepare(
+      `
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
@@ -60,8 +63,9 @@ auth.post('/debug/migrate', async (c) => {
         created_at TEXT NOT NULL,
         is_active BOOLEAN DEFAULT 1
       )
-    `).run();
-    
+    `
+    ).run();
+
     return c.json({ message: 'Users table created successfully' });
   } catch (error) {
     return c.json({ error: error.message }, 500);
@@ -69,9 +73,11 @@ auth.post('/debug/migrate', async (c) => {
 });
 
 // Debug route to check users in table
-auth.get('/debug/users', async (c) => {
+auth.get('/debug/users', async c => {
   try {
-    const users = await c.env.DB.prepare("SELECT id, email, name, created_at FROM users").all();
+    const users = await c.env.DB.prepare(
+      'SELECT id, email, name, created_at FROM users'
+    ).all();
     return c.json({ users: users.results });
   } catch (error) {
     return c.json({ error: error.message }, 500);
