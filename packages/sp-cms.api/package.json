@@ -9,9 +9,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.2",
     "better-auth": "^1.1.10",
-    "hono": "^4.6.16"
+    "hono": "^4.6.16",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218.0",

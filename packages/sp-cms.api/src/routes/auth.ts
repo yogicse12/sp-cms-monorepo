@@ -1,8 +1,16 @@
 import { Hono } from 'hono';
+import { authenticate } from '../middleware/auth';
 import { AuthService } from '../services/authService';
 import type { Env } from '../types/env';
 
-const auth = new Hono<{ Bindings: Env }>();
+type AuthContext = {
+  Bindings: Env;
+  Variables: {
+    user: any;
+  };
+};
+
+const auth = new Hono<AuthContext>();
 
 auth.post('/register', async c => {
   try {
@@ -91,6 +99,15 @@ auth.get('/debug/users', async c => {
       500
     );
   }
+});
+
+// Protected route example
+auth.get('/profile', authenticate, async c => {
+  const user = c.get('user');
+  return c.json({
+    message: 'Profile accessed successfully',
+    user,
+  });
 });
 
 export default auth;

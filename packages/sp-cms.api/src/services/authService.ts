@@ -1,4 +1,5 @@
 import * as bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
 import type { Env } from '../types/env';
 
 export interface RegisterRequest {
@@ -135,8 +136,16 @@ export class AuthService {
       throw new Error('Invalid password');
     }
 
-    // Generate simple token (replace with JWT in production)
-    const token = `token_${user.id}_${Date.now()}`;
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      env.TOKEN_SECRET || 'default-secret',
+      { expiresIn: '24h' }
+    );
 
     return {
       message: 'Login successful',
