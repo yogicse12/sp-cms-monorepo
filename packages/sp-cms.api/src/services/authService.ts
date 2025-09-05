@@ -42,6 +42,14 @@ export interface ChangePasswordResponse {
   message: string;
 }
 
+export interface DeactivateUserResponse {
+  message: string;
+}
+
+export interface ActivateUserResponse {
+  message: string;
+}
+
 export class AuthService {
   static validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -124,9 +132,9 @@ export class AuthService {
     // Find user by email in D1 database
     const user = await env.DB.prepare(
       `
-      SELECT id, email, name, password_hash, created_at
+      SELECT id, email, name, password_hash, created_at, is_active
       FROM users 
-      WHERE email = ? AND is_active = 1
+      WHERE email = ?
     `
     )
       .bind(normalizedEmail)
@@ -134,6 +142,11 @@ export class AuthService {
 
     if (!user) {
       throw new Error('User not found');
+    }
+
+    // Check if user is active
+    if (!user.is_active) {
+      throw new Error('User is not active');
     }
 
     // Check password
@@ -225,6 +238,102 @@ export class AuthService {
 
     return {
       message: 'Password changed successfully',
+    };
+  }
+
+  static async deactivateUser(
+    userId: string,
+    adminUserId: string,
+    env: Env
+  ): Promise<DeactivateUserResponse> {
+    if (!adminUserId) {
+      throw new Error('You are not authorized');
+    }
+
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    // Check if the user to be deactivated exists and is currently active
+    const userToDeactivate = await env.DB.prepare(
+      `
+      SELECT id, email, name, is_active
+      FROM users 
+      WHERE id = ?
+    `
+    )
+      .bind(userId)
+      .first();
+
+    if (!userToDeactivate) {
+      throw new Error('User not found');
+    }
+
+    // Update user to inactive
+    const result = await env.DB.prepare(
+      `
+      UPDATE users 
+      SET is_active = 0, updated_at = ?
+      WHERE id = ?
+    `
+    )
+      .bind(new Date().toISOString(), userId)
+      .run();
+
+    if (!result.success) {
+      throw new Error('Failed to deactivate user');
+    }
+
+    return {
+      message: 'User deactivated successfully',
+    };
+  }
+
+  static async activateUser(
+    userId: string,
+    adminUserId: string,
+    env: Env
+  ): Promise<ActivateUserResponse> {
+    if (!adminUserId) {
+      throw new Error('You are not authorized');
+    }
+
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    // Check if the user to be activated exists
+    const userToActivate = await env.DB.prepare(
+      `
+      SELECT id, email, name, is_active
+      FROM users 
+      WHERE id = ?
+    `
+    )
+      .bind(userId)
+      .first();
+
+    if (!userToActivate) {
+      throw new Error('User not found');
+    }
+
+    // Update user to active
+    const result = await env.DB.prepare(
+      `
+      UPDATE users 
+      SET is_active = 1, updated_at = ?
+      WHERE id = ?
+    `
+    )
+      .bind(new Date().toISOString(), userId)
+      .run();
+
+    if (!result.success) {
+      throw new Error('Failed to activate user');
+    }
+
+    return {
+      message: 'User activated successfully',
     };
   }
 }

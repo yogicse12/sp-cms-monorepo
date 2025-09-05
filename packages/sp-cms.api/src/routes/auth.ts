@@ -35,6 +35,10 @@ auth.post('/login', async c => {
     const errorMessage =
       error instanceof Error ? error.message : 'Invalid JSON payload';
 
+    if (errorMessage.includes('User is not active')) {
+      return c.json({ error: 'User is not active' }, 401);
+    }
+
     if (
       errorMessage.includes('User not found') ||
       errorMessage.includes('Invalid password')
@@ -158,6 +162,80 @@ auth.put('/change-password', authenticate, async c => {
     }
     if (errorMessage.includes('Password must be')) {
       return c.json({ error: errorMessage }, 400);
+    }
+
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// Deactivate user route
+auth.put('/deactivate/user/:id', authenticate, async c => {
+  try {
+    const userId = c.req.param('id');
+    const adminUser = c.get('user');
+    const result = await AuthService.deactivateUser(
+      userId,
+      adminUser.userId,
+      c.env
+    );
+
+    return c.json(result, 200);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Invalid request';
+
+    // Handle specific error codes from service
+    if (
+      errorMessage.includes('not authorized') ||
+      errorMessage.includes('You are not authorized')
+    ) {
+      return c.json({ error: 'You are not authorized' }, 400);
+    }
+    if (errorMessage.includes('User ID is required')) {
+      return c.json({ error: 'User ID is required' }, 400);
+    }
+    if (errorMessage.includes('User not found')) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+    if (errorMessage.includes('Failed to deactivate')) {
+      return c.json({ error: 'Failed to deactivate user' }, 500);
+    }
+
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// Activate user route
+auth.put('/activate/user/:id', authenticate, async c => {
+  try {
+    const userId = c.req.param('id');
+    const adminUser = c.get('user');
+    const result = await AuthService.activateUser(
+      userId,
+      adminUser.userId,
+      c.env
+    );
+
+    return c.json(result, 200);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Invalid request';
+
+    // Handle specific error codes from service
+    if (
+      errorMessage.includes('not authorized') ||
+      errorMessage.includes('You are not authorized')
+    ) {
+      return c.json({ error: 'You are not authorized' }, 400);
+    }
+    if (errorMessage.includes('User ID is required')) {
+      return c.json({ error: 'User ID is required' }, 400);
+    }
+    if (errorMessage.includes('User not found')) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+    if (errorMessage.includes('Failed to activate')) {
+      return c.json({ error: 'Failed to activate user' }, 500);
     }
 
     return c.json({ error: errorMessage }, 500);
