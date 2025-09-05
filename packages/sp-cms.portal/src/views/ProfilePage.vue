@@ -1,44 +1,193 @@
 <template>
-  <div class="admin">
-    <h1>{{ title }}</h1>
-    <p>{{ description }}</p>
-    <div v-if="isLoading">Loading...</div>
-    <div v-else>
-      <h3>Content Items: {{ contentItems.length }}</h3>
-      <ul>
-        <li v-for="item in contentItems" :key="item.id">
-          {{ item.title }}
-        </li>
-      </ul>
+  <div class="profile">
+    <div class="profile-section bg-white px-16 py-12 rounded-lg mb-8">
+      <h2 class="text-2xl font-bold mb-8">Personal Info</h2>
+      <div class="grid grid-cols-3 gap-12">
+        <div class="p-4 border border-gray-200 rounded-lg">
+          <div class="text-secondary text-lg font-bold mb-2">Full Name</div>
+          <div class="text-lg">{{ user.name }}</div>
+        </div>
+        <div class="p-4 border border-gray-200 rounded-lg">
+          <div class="text-secondary text-lg font-bold mb-2">Email Address</div>
+          <div class="text-lg">{{ user.email }}</div>
+        </div>
+        <div class="p-4 border border-gray-200 rounded-lg">
+          <div class="text-secondary text-lg font-bold mb-2">
+            Date of Joining
+          </div>
+          <div class="text-lg">
+            {{ dayjs(user.createdAt).format('DD MMMM, YYYY') }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="change-password bg-white px-16 py-12 rounded-lg">
+      <h2 class="text-2xl font-bold mb-8">Change Your Password</h2>
+      <div class="grid grid-cols-3 gap-12">
+        <Input
+          v-model="password.currentPassword"
+          type="password"
+          placeholder="Current Password *"
+          :class="errors.currentPassword ? 'border-red-500' : ''"
+        />
+        <Input
+          v-model="password.newPassword"
+          type="password"
+          placeholder="New Password *"
+          :class="errors.newPassword ? 'border-red-500' : ''"
+        />
+        <Input
+          v-model="password.confirmPassword"
+          type="password"
+          placeholder="Confirm Password *"
+          :class="errors.confirmPassword ? 'border-red-500' : ''"
+        />
+      </div>
+      <!-- Error messages -->
+      <div
+        v-if="
+          errors.currentPassword || errors.newPassword || errors.confirmPassword
+        "
+        class="mt-4 space-y-2"
+      >
+        <p v-if="errors.currentPassword" class="text-red-500 text-sm">
+          {{ errors.currentPassword }}
+        </p>
+        <p v-if="errors.newPassword" class="text-red-500 text-sm">
+          {{ errors.newPassword }}
+        </p>
+        <p v-if="errors.confirmPassword" class="text-red-500 text-sm">
+          {{ errors.confirmPassword }}
+        </p>
+      </div>
+
+      <div class="mt-8">
+        <Button @click="handleChangePassword" :disabled="isLoading">
+          {{ isLoading ? 'Changing...' : 'Change Password' }}
+        </Button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import dayjs from 'dayjs';
+import { useRouter } from 'vue-router';
+import Input from '@/components/ui/Input.vue';
+import Button from '@/components/ui/Button.vue';
+import Swal from 'sweetalert2';
 
-const title = ref('Admin Dashboard');
-const description = ref('Manage your content here');
-const isLoading = ref(true);
-const contentItems = ref([]);
+const router = useRouter();
 
-const loadContent = () => {
-  setTimeout(() => {
-    contentItems.value = [
-      { id: 1, title: 'Sample Content 1' },
-      { id: 2, title: 'Sample Content 2' },
-    ];
-    isLoading.value = false;
-  }, 1000);
+const authStore = useAuthStore();
+
+const user = ref(authStore.user);
+
+const password = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+});
+
+const errors = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+});
+
+const isLoading = ref(false);
+
+const validateForm = () => {
+  // Clear previous errors
+  errors.value = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  };
+
+  let isValid = true;
+
+  // Validate current password
+  if (
+    !password.value.currentPassword ||
+    password.value.currentPassword.trim() === ''
+  ) {
+    errors.value.currentPassword = 'Current password is required';
+    isValid = false;
+  }
+
+  // Validate new password
+  if (!password.value.newPassword || password.value.newPassword.trim() === '') {
+    errors.value.newPassword = 'New password is required';
+    isValid = false;
+  }
+
+  // Validate new password length
+  if (password.value.newPassword.length < 8) {
+    errors.value.newPassword = 'Password must be at least 8 characters';
+    isValid = false;
+  }
+
+  // Validate confirm password
+  if (
+    !password.value.confirmPassword ||
+    password.value.confirmPassword.trim() === ''
+  ) {
+    errors.value.confirmPassword = 'Confirm password is required';
+    isValid = false;
+  }
+
+  // Validate confirm password
+  if (password.value.newPassword !== password.value.confirmPassword) {
+    errors.value.confirmPassword = 'Passwords do not match';
+    isValid = false;
+  }
+
+  return isValid;
 };
 
-onMounted(() => {
-  loadContent();
-});
+const handleChangePassword = async () => {
+  if (!validateForm()) {
+    return;
+  }
+  isLoading.value = true;
+  try {
+    const response = await authStore.changePassword(password.value);
+    if (response) {
+      await Swal.fire({
+        title: 'Password Changed!',
+        text: 'Your password has been successfully changed. You will be logged out.',
+        icon: 'success',
+        confirmButtonColor: '#313131',
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      logout();
+    }
+  } catch (error) {
+    await Swal.fire({
+      title: 'Error',
+      text: error.response?.data?.error || 'Failed to change password',
+      icon: 'error',
+      confirmButtonColor: '#dc2626',
+      showConfirmButton: true,
+    });
+  } finally {
+    isLoading.value = false;
+    password.value = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    };
+  }
+};
+
+const logout = () => {
+  authStore.logout();
+  router.push('/login');
+};
 </script>
 
-<style scoped>
-.admin {
-  text-align: center;
-}
-</style>
+<style scoped></style>

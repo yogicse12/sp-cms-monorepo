@@ -72,6 +72,7 @@ auth.post('/debug/migrate', async c => {
         name TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         created_at TEXT NOT NULL,
+        updated_at TEXT,
         is_active BOOLEAN DEFAULT 1
       )
     `
@@ -81,6 +82,25 @@ auth.post('/debug/migrate', async c => {
   } catch (error) {
     return c.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
+      500
+    );
+  }
+});
+
+// Migration route to add updated_at column if it doesn't exist
+auth.post('/debug/add-updated-at', async c => {
+  try {
+    await c.env.DB.prepare(
+      `ALTER TABLE users ADD COLUMN updated_at TEXT`
+    ).run();
+
+    return c.json({ message: 'Updated_at column added successfully' });
+  } catch (error) {
+    return c.json(
+      {
+        error:
+          error instanceof Error ? error.message : 'Column may already exist',
+      },
       500
     );
   }
@@ -108,6 +128,40 @@ auth.get('/profile', authenticate, async c => {
     message: 'Profile accessed successfully',
     user,
   });
+});
+
+// Change password route
+auth.put('/change-password', authenticate, async c => {
+  try {
+    const user = c.get('user');
+    const requestData = await c.req.json();
+    const result = await AuthService.changePassword(
+      user.userId,
+      requestData,
+      c.env
+    );
+
+    return c.json(result, 200);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Invalid JSON payload';
+
+    // Handle specific error codes from service
+    if (errorMessage.includes('User not found')) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+    if (
+      errorMessage.includes('Invalid old password') ||
+      errorMessage.includes('Invalid current password')
+    ) {
+      return c.json({ error: 'Invalid current password' }, 400);
+    }
+    if (errorMessage.includes('Password must be')) {
+      return c.json({ error: errorMessage }, 400);
+    }
+
+    return c.json({ error: errorMessage }, 500);
+  }
 });
 
 export default auth;

@@ -33,6 +33,15 @@ export interface RegisterResponse {
   user: Omit<User, 'passwordHash'>;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
+}
+
 export class AuthService {
   static validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -156,6 +165,66 @@ export class AuthService {
         name: user.name as string,
         createdAt: user.created_at as string,
       },
+    };
+  }
+
+  static async changePassword(
+    userId: string,
+    passwordData: ChangePasswordRequest,
+    env: Env
+  ): Promise<ChangePasswordResponse> {
+    if (!passwordData.currentPassword || !passwordData.newPassword) {
+      throw new Error('Current password and new password are required');
+    }
+
+    if (!this.validatePassword(passwordData.newPassword)) {
+      throw new Error('Password must be at least 8 characters long');
+    }
+
+    // Find user by ID
+    const user = await env.DB.prepare(
+      `
+      SELECT id, email, name, password_hash, created_at
+      FROM users 
+      WHERE id = ? AND is_active = 1
+    `
+    )
+      .bind(userId)
+      .first();
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(
+      passwordData.currentPassword,
+      user.password_hash as string
+    );
+    if (!isValidPassword) {
+      throw new Error('Invalid current password');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(passwordData.newPassword, 10);
+
+    // Update password in database
+    const result = await env.DB.prepare(
+      `
+      UPDATE users 
+      SET password_hash = ?, updated_at = ?
+      WHERE id = ?
+    `
+    )
+      .bind(hashedPassword, new Date().toISOString(), userId)
+      .run();
+
+    if (!result.success) {
+      throw new Error(`Database error: ${result.error}`);
+    }
+
+    return {
+      message: 'Password changed successfully',
     };
   }
 }
