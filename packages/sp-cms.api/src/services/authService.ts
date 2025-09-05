@@ -50,6 +50,16 @@ export interface ActivateUserResponse {
   message: string;
 }
 
+export interface ResetPasswordRequest {
+  email: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
 export class AuthService {
   static validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -334,6 +344,69 @@ export class AuthService {
 
     return {
       message: 'User activated successfully',
+    };
+  }
+
+  static async resetPassword(
+    passwordData: ResetPasswordRequest,
+    adminUserId: string,
+    env: Env
+  ): Promise<ResetPasswordResponse> {
+    if (!adminUserId) {
+      throw new Error('You are not authorized');
+    }
+
+    if (!passwordData.email) {
+      throw new Error('Email is required');
+    }
+
+    if (!passwordData.newPassword || !passwordData.confirmPassword) {
+      throw new Error('New password is required');
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      throw new Error('New password and confirm password do not match');
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      throw new Error('Password should be at least 8 characters');
+    }
+
+    // Get user by email
+    const user = await env.DB.prepare(
+      `
+      SELECT id, email, name
+      FROM users 
+      WHERE email = ?
+    `
+    )
+      .bind(passwordData.email.toLowerCase().trim())
+      .first();
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(passwordData.newPassword, 10);
+
+    // Update password
+    const result = await env.DB.prepare(
+      `
+      UPDATE users 
+      SET password_hash = ?, updated_at = ?
+      WHERE id = ?
+    `
+    )
+      .bind(hashedPassword, new Date().toISOString(), user.id)
+      .run();
+
+    if (!result.success) {
+      throw new Error('Failed to reset password');
+    }
+
+    return {
+      message: 'Password reset successfully',
     };
   }
 }

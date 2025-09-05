@@ -242,4 +242,50 @@ auth.put('/activate/user/:id', authenticate, async c => {
   }
 });
 
+// Reset password route
+auth.put('/reset-password', authenticate, async c => {
+  try {
+    const adminUser = c.get('user');
+    const requestData = await c.req.json();
+    const result = await AuthService.resetPassword(
+      requestData,
+      adminUser.userId,
+      c.env
+    );
+
+    return c.json(result, 200);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Invalid request';
+
+    // Handle specific error codes from service
+    if (
+      errorMessage.includes('not authorized') ||
+      errorMessage.includes('You are not authorized')
+    ) {
+      return c.json({ error: 'You are not authorized' }, 400);
+    }
+    if (errorMessage.includes('Email is required')) {
+      return c.json({ error: 'Email is required' }, 400);
+    }
+    if (errorMessage.includes('New password is required')) {
+      return c.json({ error: 'New password is required' }, 400);
+    }
+    if (errorMessage.includes('do not match')) {
+      return c.json(
+        { error: 'New password and confirm password do not match' },
+        400
+      );
+    }
+    if (errorMessage.includes('Password should be at least')) {
+      return c.json({ error: errorMessage }, 400);
+    }
+    if (errorMessage.includes('User not found')) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
 export default auth;
