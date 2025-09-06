@@ -11,7 +11,6 @@ const API_BASE_URL =
 
 // Get environment-based credential settings
 const enableCredentials = import.meta.env.VITE_ENABLE_CREDENTIALS === 'true';
-const isDevelopment = import.meta.env.VITE_ENVIRONMENT === 'development';
 
 // Create axios instance with environment-based configuration
 const api = axios.create({
@@ -25,12 +24,7 @@ const api = axios.create({
   withCredentials: enableCredentials,
 });
 
-// Log configuration for debugging
-console.info('API Configuration:', {
-  baseURL: API_BASE_URL,
-  withCredentials: enableCredentials,
-  isDevelopment: isDevelopment,
-});
+// API configuration loaded
 
 // Track pending refresh to prevent multiple simultaneous requests
 let isRefreshing = false;
@@ -163,14 +157,7 @@ api.interceptors.response.use(
       }
     }
 
-    // Handle other error types
-    if (error.response?.status === 403) {
-      // Forbidden - user doesn't have permission
-      console.warn('Access forbidden:', error.response.data);
-    } else if (error.response?.status >= 500) {
-      // Server error
-      console.error('Server error:', error.response.data);
-    }
+    // Handle other error types silently
 
     return Promise.reject(error);
   }

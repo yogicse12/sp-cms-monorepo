@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import api from '@/services/api.js';
 import tokenManager from '@/services/tokenManager.js';
-import { encrypt, decrypt } from '@/lib/crypto.js';
 import { sanitizeInput } from '@/lib/security.js';
 
 export const useAuthStore = defineStore('auth', {
@@ -11,13 +10,17 @@ export const useAuthStore = defineStore('auth', {
     error: null,
     sessionId: null,
     lastActivity: Date.now(),
+    initialized: false,
+    initializationPromise: null,
   }),
 
   getters: {
-    isAuthenticated: () => {
-      // Check if we have a valid access token
-      const token = tokenManager.getAccessToken();
-      return !!token;
+    isAuthenticated: state => {
+      // Check if we have a valid access token AND user data
+      const hasTokenInMemory = !!tokenManager.getAccessToken();
+      const hasUser = !!state.user;
+      const result = hasTokenInMemory && hasUser;
+      return result;
     },
 
     userInfo: state => state.user,
@@ -51,28 +54,60 @@ export const useAuthStore = defineStore('auth', {
 
         // Handle the current API response structure (token, user)
         // Fallback to new structure if available (accessToken, refreshToken, user, expiresIn)
+
         const {
           token,
           accessToken = token,
           refreshToken,
           user,
-          expiresIn = 900, // Default 15 minutes
+          expiresIn = 24 * 60 * 60, // API returns 24h tokens
         } = response.data;
 
-        // Store access token in memory with automatic expiry
+        // Store JWT token in secure cookie (better security)
         if (accessToken) {
+          // Store in memory for current session
           tokenManager.setAccessToken(accessToken, expiresIn);
+
+          // Store in secure cookie for persistence across refreshes
+          try {
+            const expires = new Date();
+            expires.setSeconds(expires.getSeconds() + expiresIn);
+
+            // Use secure cookie attributes
+            const cookieAttributes = [
+              'Path=/',
+              'SameSite=Strict',
+              `Expires=${expires.toUTCString()}`,
+            ];
+
+            // Add Secure flag if HTTPS (production)
+            if (window.location.protocol === 'https:') {
+              cookieAttributes.push('Secure');
+            }
+
+            document.cookie = `auth_token=${accessToken}; ${cookieAttributes.join('; ')}`;
+          } catch (error) {
+            // Silent fail for token storage
+          }
         }
 
-        // Store refresh token in secure cookie if provided
+        // Note: This API doesn't provide refresh tokens (uses 24h JWT tokens)
         if (refreshToken) {
           await tokenManager.setRefreshToken(refreshToken);
         }
 
-        // Store encrypted user data in memory
-        this.user = await this.encryptUserData(user);
+        // Store user data in localStorage (non-sensitive data)
+        this.user = user; // Store plain user data in Pinia state
         this.sessionId = this.generateSessionId();
         this.updateActivity();
+        this.initialized = true;
+
+        // Store user data in localStorage for persistence
+        try {
+          localStorage.setItem('sp_user_data', JSON.stringify(user));
+        } catch (error) {
+          // Silent fail for user data storage
+        }
 
         return response;
       } catch (error) {
@@ -96,7 +131,6 @@ export const useAuthStore = defineStore('auth', {
             await api.post('/api/auth/logout');
           } catch (error) {
             // Continue with cleanup even if API call fails
-            console.warn('Logout API call failed:', error);
           }
         }
 
@@ -119,13 +153,16 @@ export const useAuthStore = defineStore('auth', {
       this.sessionId = null;
       this.error = null;
       this.lastActivity = 0;
+      this.initialized = false;
 
-      // Clear any persistent encrypted data
+      // Clear cookies and localStorage
       try {
+        this.clearTokenCookie();
+        localStorage.removeItem('sp_user_data');
         localStorage.removeItem('sp_session_backup');
         sessionStorage.clear();
       } catch (error) {
-        console.warn('Storage cleanup failed:', error);
+        // Silent fail for storage cleanup
       }
 
       // Clear browser cache for sensitive pages
@@ -136,7 +173,7 @@ export const useAuthStore = defineStore('auth', {
             cacheNames.map(cacheName => caches.delete(cacheName))
           );
         } catch (error) {
-          console.warn('Cache cleanup failed:', error);
+          // Silent fail for cache cleanup
         }
       }
 
@@ -180,23 +217,74 @@ export const useAuthStore = defineStore('auth', {
      * Initialize user session from stored tokens
      */
     async initializeSession() {
-      try {
-        // Check if we have tokens
-        const accessToken = tokenManager.getAccessToken();
-        const refreshToken = await tokenManager.getRefreshToken();
+      // If already initialized or currently initializing, return the existing promise
+      if (this.initialized) {
+        return;
+      }
 
-        if (!accessToken && refreshToken) {
-          // Try to refresh the access token
-          const newToken = await tokenManager.refreshAccessToken();
-          if (newToken) {
-            await this.fetchUserInfo();
-          }
-        } else if (accessToken) {
-          await this.fetchUserInfo();
+      if (this.initializationPromise) {
+        return this.initializationPromise;
+      }
+
+      // Create initialization promise
+      this.initializationPromise = this.performInitialization();
+
+      try {
+        return await this.initializationPromise;
+      } finally {
+        this.initializationPromise = null;
+      }
+    },
+
+    /**
+     * Perform the actual session initialization
+     */
+    async performInitialization() {
+      try {
+        // First, try to get token from cookie
+        let accessToken = this.getTokenFromCookie();
+
+        // If found in cookie but not in memory, restore to memory
+        if (accessToken && !tokenManager.getAccessToken()) {
+          // Store in token manager for current session
+          tokenManager.setAccessToken(accessToken, 24 * 60 * 60); // 24h
         }
+
+        // Try to restore user data from localStorage
+        if (accessToken) {
+          try {
+            const storedUserData = localStorage.getItem('sp_user_data');
+            if (storedUserData) {
+              this.user = JSON.parse(storedUserData);
+              this.initialized = true;
+              this.updateActivity();
+              return;
+            }
+          } catch (error) {
+            localStorage.removeItem('sp_user_data');
+          }
+
+          // If no user data in localStorage, fetch from API
+          try {
+            await this.fetchUserInfo();
+            this.initialized = true;
+            return;
+          } catch (error) {
+            // Token might be invalid, clear everything
+            this.clearTokenCookie();
+            localStorage.removeItem('sp_user_data');
+            tokenManager.clearAccessToken();
+            throw error;
+          }
+        }
+
+        this.initialized = true;
       } catch (error) {
-        console.warn('Session initialization failed:', error);
-        await this.performCompleteLogout();
+        this.initialized = true;
+        // Only logout if there was an actual error, not just missing tokens
+        if (error.message && !error.message.includes('No refresh token')) {
+          await this.performCompleteLogout();
+        }
       }
     },
 
@@ -204,13 +292,18 @@ export const useAuthStore = defineStore('auth', {
      * Fetch current user information
      */
     async fetchUserInfo() {
+      const response = await api.get('/api/auth/profile');
+
+      // The backend returns { message, user } structure
+      const userData = response.data.user || response.data;
+      this.user = userData; // Store plain user data
+      this.updateActivity();
+
+      // Store in localStorage for persistence
       try {
-        const response = await api.get('/api/auth/me');
-        this.user = await this.encryptUserData(response.data.user);
-        this.updateActivity();
+        localStorage.setItem('sp_user_data', JSON.stringify(userData));
       } catch (error) {
-        console.error('Failed to fetch user info:', error);
-        throw error;
+        // Silent fail for user data storage
       }
     },
 
@@ -225,6 +318,9 @@ export const useAuthStore = defineStore('auth', {
      * Check session validity and refresh if needed
      */
     async validateSession() {
+      // Ensure session is initialized first
+      await this.initializeSession();
+
       if (!this.isSessionActive) {
         await this.performCompleteLogout();
         return false;
@@ -241,48 +337,43 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Encrypt user data for secure storage
+     * Get user data (now stored plain in localStorage)
      */
-    async encryptUserData(userData) {
-      try {
-        const encrypted = await encrypt(JSON.stringify(userData));
-        return { encrypted: true, data: encrypted };
-      } catch (error) {
-        console.warn('User data encryption failed, storing unencrypted');
-        return userData;
-      }
-    },
-
-    /**
-     * Decrypt user data
-     */
-    async decryptUserData(encryptedData) {
-      if (!encryptedData?.encrypted) {
-        return encryptedData;
-      }
-
-      try {
-        const decrypted = await decrypt(encryptedData.data);
-        return JSON.parse(decrypted);
-      } catch (error) {
-        console.error('User data decryption failed');
-        return null;
-      }
-    },
-
-    /**
-     * Get decrypted user data
-     */
-    async getUserData() {
-      if (!this.user) {
-        return null;
-      }
-
-      if (this.user.encrypted) {
-        return await this.decryptUserData(this.user);
-      }
-
+    getUserData() {
       return this.user;
+    },
+
+    /**
+     * Get JWT token from cookie
+     */
+    getTokenFromCookie() {
+      try {
+        const cookies = document.cookie.split(';');
+        const authCookie = cookies.find(cookie =>
+          cookie.trim().startsWith('auth_token=')
+        );
+
+        if (authCookie) {
+          return authCookie.split('=')[1];
+        }
+
+        return null;
+      } catch (error) {
+        return null;
+      }
+    },
+
+    /**
+     * Clear auth token cookie
+     */
+    clearTokenCookie() {
+      try {
+        // Clear the auth token cookie
+        document.cookie =
+          'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Strict';
+      } catch (error) {
+        // Silent fail for cookie clearing
+      }
     },
 
     /**

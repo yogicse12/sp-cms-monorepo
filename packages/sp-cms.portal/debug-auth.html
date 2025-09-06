@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auth Debug Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+      }
+      .success {
+        background-color: #d4edda;
+      }
+      .error {
+        background-color: #f8d7da;
+      }
+      .info {
+        background-color: #d1ecf1;
+      }
+      button {
+        padding: 10px;
+        margin: 5px;
+      }
+      pre {
+        background: #f8f9fa;
+        padding: 10px;
+        overflow-x: auto;
+      }
+      #console-output {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Authentication System Debug Test</h1>
+
+    <div class="test-section">
+      <h2>Test Controls</h2>
+      <button onclick="testTokenStorage()">Test Token Storage</button>
+      <button onclick="testCookies()">Test Cookie Functionality</button>
+      <button onclick="simulateLogin()">Simulate Login Flow</button>
+      <button onclick="simulateRefresh()">Simulate Page Refresh</button>
+      <button onclick="clearAll()">Clear All Data</button>
+      <button onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <div class="test-section">
+      <h2>Current State</h2>
+      <div id="current-state">Loading...</div>
+    </div>
+
+    <div class="test-section">
+      <h2>Console Output</h2>
+      <pre id="console-output"></pre>
+    </div>
+
+    <script>
+      // Capture console logs
+      const originalLog = console.log;
+      const originalError = console.error;
+      const originalWarn = console.warn;
+
+      const consoleOutput = document.getElementById('console-output');
+
+      function addToConsole(type, ...args) {
+        const timestamp = new Date().toLocaleTimeString();
+        const message = args.join(' ');
+        consoleOutput.innerHTML += `[${timestamp}] ${type}: ${message}\n`;
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+      }
+
+      console.log = (...args) => {
+        originalLog.apply(console, args);
+        addToConsole('LOG', ...args);
+      };
+
+      console.error = (...args) => {
+        originalError.apply(console, args);
+        addToConsole('ERROR', ...args);
+      };
+
+      console.warn = (...args) => {
+        originalWarn.apply(console, args);
+        addToConsole('WARN', ...args);
+      };
+
+      function updateCurrentState() {
+        const state = {
+          cookies: document.cookie
+            .split(';')
+            .map(c => c.trim().split('=')[0])
+            .join(', '),
+          localStorage: Object.keys(localStorage).join(', '),
+          sessionStorage: Object.keys(sessionStorage).join(', '),
+          currentPath: window.location.pathname,
+          currentTime: new Date().toLocaleString(),
+        };
+
+        document.getElementById('current-state').innerHTML = `
+                <p><strong>Cookies:</strong> ${state.cookies || 'None'}</p>
+                <p><strong>LocalStorage:</strong> ${state.localStorage || 'None'}</p>
+                <p><strong>SessionStorage:</strong> ${state.sessionStorage || 'None'}</p>
+                <p><strong>Current Path:</strong> ${state.currentPath}</p>
+                <p><strong>Last Updated:</strong> ${state.currentTime}</p>
+            `;
+      }
+
+      function testTokenStorage() {
+        console.log('🧪 Starting token storage test...');
+
+        // Test setting a cookie
+        document.cookie =
+          'test_token=encrypted_test_value; Path=/; SameSite=Strict; Max-Age=3600';
+        console.log('🧪 Set test cookie');
+
+        // Test reading cookies
+        const cookies = document.cookie.split(';');
+        console.log('🧪 Available cookies:', cookies);
+
+        const testCookie = cookies.find(c =>
+          c.trim().startsWith('test_token=')
+        );
+        console.log('🧪 Found test cookie:', !!testCookie);
+
+        updateCurrentState();
+      }
+
+      function testCookies() {
+        console.log('🍪 Testing cookie functionality...');
+
+        // Clear test cookie
+        document.cookie =
+          'test_token=; Path=/; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:01 GMT';
+
+        updateCurrentState();
+      }
+
+      function simulateLogin() {
+        console.log('🔐 Simulating login flow...');
+
+        // Simulate storing tokens (like the real login would do)
+        const mockAccessToken = 'mock_access_token_' + Date.now();
+        const mockRefreshToken = 'mock_refresh_token_' + Date.now();
+
+        console.log(
+          '🔐 Would store access token in memory:',
+          mockAccessToken.substring(0, 20) + '...'
+        );
+        console.log(
+          '🔐 Would store refresh token in cookie:',
+          mockRefreshToken.substring(0, 20) + '...'
+        );
+
+        // Store mock refresh token in cookie
+        document.cookie = `refresh_token=${btoa(mockRefreshToken)}; Path=/; SameSite=Strict; Max-Age=604800`;
+        console.log('🔐 Stored refresh token in cookie');
+
+        updateCurrentState();
+      }
+
+      function simulateRefresh() {
+        console.log('🔄 Simulating page refresh...');
+        console.log('🔄 Access tokens would be cleared from memory');
+        console.log('🔄 Checking for refresh token in cookies...');
+
+        const cookies = document.cookie.split(';');
+        const refreshCookie = cookies.find(c =>
+          c.trim().startsWith('refresh_token=')
+        );
+
+        if (refreshCookie) {
+          console.log(
+            '🔄 Found refresh token cookie - would attempt to refresh access token'
+          );
+          const token = refreshCookie.split('=')[1];
+          console.log(
+            '🔄 Refresh token value:',
+            token.substring(0, 10) + '...'
+          );
+        } else {
+          console.log(
+            '🔄 No refresh token found - user would be redirected to login'
+          );
+        }
+
+        updateCurrentState();
+      }
+
+      function clearAll() {
+        console.log('🧹 Clearing all data...');
+
+        // Clear cookies
+        document.cookie.split(';').forEach(cookie => {
+          const eqPos = cookie.indexOf('=');
+          const name =
+            eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT`;
+        });
+
+        localStorage.clear();
+        sessionStorage.clear();
+
+        console.log('🧹 All data cleared');
+        updateCurrentState();
+      }
+
+      function clearConsole() {
+        consoleOutput.innerHTML = '';
+      }
+
+      // Update state every 5 seconds
+      setInterval(updateCurrentState, 5000);
+      updateCurrentState();
+
+      console.log('🚀 Auth debug tool loaded');
+    </script>
+  </body>
+</html>

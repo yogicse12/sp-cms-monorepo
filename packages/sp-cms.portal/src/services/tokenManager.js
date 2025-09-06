@@ -97,17 +97,11 @@ class TokenManager {
       if (enableCredentials && !isDevelopment) {
         // Note: HttpOnly cookies can only be set by the server
         // This is a reminder that the server should set HttpOnly cookies in production
-        console.info(
-          'Production mode: Server should set HttpOnly refresh token cookie'
-        );
+        // Note: Server should set HttpOnly cookies in production
       }
 
       // Set the cookie (7 days expiry)
       document.cookie = `refresh_token=${encryptedToken}; ${cookieAttributes}; Max-Age=604800`;
-
-      console.info(
-        `Refresh token cookie set with attributes: ${cookieAttributes}`
-      );
     } catch (error) {
       console.error('Failed to set refresh token:', error);
       throw error;
@@ -132,7 +126,6 @@ class TokenManager {
       const encryptedToken = refreshCookie.split('=')[1];
       return await decrypt(encryptedToken);
     } catch (error) {
-      console.error('Failed to get refresh token:', error);
       return null;
     }
   }
@@ -212,8 +205,6 @@ class TokenManager {
       const refreshToken = await this.getRefreshToken();
       if (!refreshToken) {
         // If no refresh token, this might be initial login or token expired
-        // Don't throw error, just return null and let the app handle it
-        console.warn('No refresh token available for refresh');
         return null;
       }
 
@@ -254,8 +245,6 @@ class TokenManager {
 
       return data.accessToken;
     } catch (error) {
-      console.error('Token refresh failed:', error);
-
       // Only clear tokens and redirect if this is not a "no refresh token" error
       if (!error.message?.includes('No refresh token available')) {
         this.clearAllTokens();

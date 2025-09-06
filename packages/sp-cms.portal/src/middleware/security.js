@@ -31,9 +31,11 @@ export const authMiddleware = async (to, from, next) => {
 
       // Check token expiry and refresh if needed
       const accessToken = tokenManager.getAccessToken();
+
       if (!accessToken) {
         // Try to refresh token
         const refreshed = await tokenManager.refreshAccessToken();
+
         if (!refreshed) {
           next({
             path: '/auth/login',
@@ -55,7 +57,6 @@ export const authMiddleware = async (to, from, next) => {
 
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
     next({
       path: '/auth/login',
       query: { redirect: to.fullPath },
@@ -93,15 +94,7 @@ export const securityMiddleware = (to, from, next) => {
     }
   }
 
-  // Log navigation for security monitoring
-  if (import.meta.env.PROD) {
-    console.info('Navigation:', {
-      from: from.path,
-      to: to.path,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-    });
-  }
+  // Navigation logging removed
 
   next();
 };
@@ -128,8 +121,7 @@ export const rateLimitMiddleware = (() => {
     const validRequests = userRequests.filter(time => now - time < WINDOW_SIZE);
 
     if (validRequests.length >= MAX_REQUESTS) {
-      console.warn('Rate limit exceeded');
-      // In a real app, you might show a rate limit error page
+      // Rate limit exceeded
       next(false);
       return;
     }
@@ -150,15 +142,23 @@ export const rateLimitMiddleware = (() => {
 export const securityGuard = async (to, from, next) => {
   try {
     // Run security middleware first
-    securityMiddleware(to, from, () => {
-      // Then run rate limiting
-      rateLimitMiddleware(to, from, () => {
-        // Finally run auth middleware
-        authMiddleware(to, from, next);
-      });
+    let blocked = false;
+    securityMiddleware(to, from, () => {});
+
+    // Run rate limiting middleware
+    rateLimitMiddleware(to, from, result => {
+      if (result === false) {
+        blocked = true;
+      }
     });
+
+    if (blocked) {
+      return;
+    }
+
+    // Finally run auth middleware (asynchronous)
+    await authMiddleware(to, from, next);
   } catch (error) {
-    console.error('Security guard error:', error);
     next({ path: '/auth/login' });
   }
 };

@@ -19,7 +19,7 @@ export default {
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
+  color: #4a4a4a;
 }
 
 nav {
@@ -28,7 +28,7 @@ nav {
 
 nav a {
   font-weight: bold;
-  color: #2c3e50;
+  color: #4a4a4a;
   margin-right: 20px;
   text-decoration: none;
 }

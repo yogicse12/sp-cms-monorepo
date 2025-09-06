@@ -72,18 +72,14 @@ const setupSessionValidation = () => {
   }, 300000); // 5 minutes
 };
 
-// Initialize session on app start
+// Initialize session tracking after app starts
 const initializeApp = async () => {
   try {
-    // Try to restore session from stored tokens
-    await authStore.initializeSession();
-
     // Setup activity tracking and session validation
     setupActivityTracking();
     setupSessionValidation();
   } catch (error) {
-    console.warn('Session initialization failed:', error);
-    // Continue with app initialization even if session restore fails
+    console.warn('App initialization failed:', error);
   }
 };
 
