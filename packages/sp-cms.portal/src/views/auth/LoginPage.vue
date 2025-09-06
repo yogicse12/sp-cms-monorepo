@@ -9,7 +9,7 @@
         </h2>
       </div>
 
-      <form class="mt-16 space-y-6" @submit.prevent="handleLogin">
+      <form class="mt-16 space-y-6" @submit.prevent>
         <div class="space-y-4">
           <div>
             <input
@@ -17,6 +17,7 @@
               type="email"
               required
               placeholder="Email address"
+              @input="authStore.clearError"
             />
           </div>
           <div>
@@ -25,15 +26,17 @@
               type="password"
               required
               placeholder="Password"
+              @input="authStore.clearError"
             />
           </div>
         </div>
 
         <div>
           <button
-            type="submit"
+            type="button"
             :disabled="authStore.loading"
             class="btn btn-primary btn-full"
+            @click="handleLogin"
           >
             {{ authStore.loading ? 'Signing in...' : 'Sign in' }}
           </button>
@@ -70,7 +73,7 @@ const handleLogin = async () => {
       router.push('/');
     }
   } catch (error) {
-    console.log(error);
+    // Error is already handled by the auth store and displayed in the template
   }
 };
 </script>
