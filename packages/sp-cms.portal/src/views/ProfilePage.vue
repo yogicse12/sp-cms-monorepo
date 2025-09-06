@@ -77,7 +77,7 @@ import dayjs from 'dayjs';
 import { useRouter } from 'vue-router';
 import Input from '@/components/ui/Input.vue';
 import Button from '@/components/ui/Button.vue';
-import Swal from 'sweetalert2';
+import AlertDialogService from '@/composables/useAlertDialog';
 
 const router = useRouter();
 
@@ -152,27 +152,37 @@ const handleChangePassword = async () => {
   if (!validateForm()) {
     return;
   }
+
+  // Show confirmation dialog before changing password
+  const result = await AlertDialogService.confirm({
+    title: 'Change Password?',
+    text: 'Are you sure you want to change your password? You will be logged out after the change.',
+    confirmButtonText: 'Yes, Change Password',
+    cancelButtonText: 'Cancel',
+    confirmVariant: 'default',
+  });
+
+  if (!result.isConfirmed) {
+    return;
+  }
+
   isLoading.value = true;
   try {
     const response = await authStore.changePassword(password.value);
     if (response) {
-      await Swal.fire({
+      await AlertDialogService.alert({
         title: 'Password Changed!',
         text: 'Your password has been successfully changed. You will be logged out.',
-        icon: 'success',
-        confirmButtonColor: '#313131',
-        timer: 2000,
-        showConfirmButton: false,
+        confirmButtonText: 'OK',
       });
       logout();
     }
   } catch (error) {
-    await Swal.fire({
+    await AlertDialogService.alert({
       title: 'Error',
       text: error.response?.data?.error || 'Failed to change password',
-      icon: 'error',
-      confirmButtonColor: '#dc2626',
-      showConfirmButton: true,
+      confirmButtonText: 'OK',
+      confirmVariant: 'destructive',
     });
   } finally {
     isLoading.value = false;

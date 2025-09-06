@@ -35,7 +35,7 @@ if (localStorage.getItem('user')) {
   height: 60px;
   background-color: #fafafa;
   padding: 4px 24px;
-  z-index: 1000;
+  z-index: 49;
   display: flex;
   justify-content: space-between;
   align-items: center;
