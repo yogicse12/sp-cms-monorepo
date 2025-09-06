@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { useAuthStore } from '@/stores/auth.js';
+import { securityGuard } from '@/middleware/security.js';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import LoginPage from '@/views/auth/LoginPage.vue';
@@ -18,7 +18,10 @@ const router = createRouter({
           path: 'login',
           name: 'Login',
           component: LoginPage,
-          meta: { guest: true },
+          meta: {
+            guest: true,
+            requiresSecureHeaders: true,
+          },
         },
       ],
     },
@@ -44,7 +47,10 @@ const router = createRouter({
           path: '/profile',
           name: 'Profile',
           component: ProfilePage,
-          meta: { requiresAuth: true },
+          meta: {
+            requiresAuth: true,
+            requiresSecureHeaders: true,
+          },
         },
       ],
     },
@@ -55,15 +61,7 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore();
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/auth/login');
-  } else if (to.meta.guest && authStore.isAuthenticated) {
-    next('/');
-  } else {
-    next();
-  }
-});
+// Use security guard middleware for all routes
+router.beforeEach(securityGuard);
 
 export default router;

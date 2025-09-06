@@ -83,7 +83,19 @@ const router = useRouter();
 
 const authStore = useAuthStore();
 
-const user = ref(authStore.user);
+const user = ref(null);
+
+// Load user data asynchronously
+const loadUserData = async () => {
+  try {
+    user.value = await authStore.getUserData();
+  } catch (error) {
+    console.error('Failed to load user data:', error);
+  }
+};
+
+// Load user data on component mount
+loadUserData();
 
 const password = ref({
   currentPassword: '',
