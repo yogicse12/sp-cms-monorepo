@@ -8,23 +8,28 @@
         <div class="text-secondary font-bold text-right">{{ name }}</div>
         <div class="text-right text-xs">{{ userName }}</div>
       </div>
-      <!-- <AvatarComponent :name="name"></AvatarComponent> -->
+      <Avatar :fallback="name" class="h-10 w-10" />
     </div>
   </header>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-//  import AvatarComponent from '@/components/Common/Avatar.vue';
+import { computed } from 'vue';
+import { useAuthStore } from '@/stores/auth.js';
+import Avatar from '@/components/ui/Avatar.vue';
 
-const name = ref('');
-const userName = ref('');
+const authStore = useAuthStore();
 
-if (localStorage.getItem('user')) {
-  const user = JSON.parse(localStorage.getItem('user'));
-  name.value = user.name;
-  userName.value = user.email;
-}
+// Use computed properties for reactivity with the auth store
+const name = computed(() => {
+  const userData = authStore.getUserData();
+  return userData?.name || '';
+});
+
+const userName = computed(() => {
+  const userData = authStore.getUserData();
+  return userData?.email || '';
+});
 </script>
 <style scoped>
 .navbar {
