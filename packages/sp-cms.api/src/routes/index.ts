@@ -1,3 +1,4 @@
 import auth from './auth';
+import blog from './blog';
 
-export { auth };
+export { auth, blog };

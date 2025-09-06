@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { auth } from './routes';
+import { auth, blog } from './routes';
 
 const app = new Hono();
 
@@ -11,5 +11,6 @@ app.get('/', c => {
 });
 
 app.route('/api/auth', auth);
+app.route('/api/post', blog);
 
 export default app;
