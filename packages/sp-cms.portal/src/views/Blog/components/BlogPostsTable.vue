@@ -1,8 +1,33 @@
 <template>
   <div class="space-y-4">
     <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center items-center py-8">
-      <div class="text-gray-500">Loading posts...</div>
+    <div v-if="loading">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Title</TableHead>
+            <TableHead>Excerpt</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead class="text-right">Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="i in 5" :key="i">
+            <TableCell class="font-medium">
+              <Skeleton class="h-4 w-[250px]" />
+            </TableCell>
+            <TableCell>
+              <Skeleton class="h-4 w-[350px]" />
+            </TableCell>
+            <TableCell>
+              <Skeleton class="h-6 w-[80px] rounded-full" />
+            </TableCell>
+            <TableCell class="text-right">
+              <Skeleton class="h-8 w-8 rounded ml-auto" />
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
     </div>
 
     <!-- Error State -->
@@ -126,6 +151,7 @@ import TableRow from '@/components/ui/TableRow.vue';
 import TableHead from '@/components/ui/TableHead.vue';
 import TableCell from '@/components/ui/TableCell.vue';
 import Button from '@/components/ui/Button.vue';
+import Skeleton from '@/components/ui/Skeleton.vue';
 import { ArrowRight } from 'lucide-vue-next';
 import api from '@/services/api.js';
 

@@ -19,25 +19,11 @@
         </li>
       </ul>
     </div>
-    <div class="logout" @click="logout">
-      <LogOut :stroke-width="1" :size="20" />
-      <span>Logout</span>
-    </div>
   </div>
 </template>
 
 <script setup>
-import { Newspaper, CircleUserRound, LogOut } from 'lucide-vue-next';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth.js';
-
-const router = useRouter();
-const authStore = useAuthStore();
-
-const logout = () => {
-  authStore.logout();
-  router.push('/login');
-};
+import { Newspaper, CircleUserRound } from 'lucide-vue-next';
 </script>
 
 <style scoped>
@@ -184,22 +170,5 @@ const logout = () => {
 }
 .sidebar .menu ul li.dropdown-item .dropdown-menu li a:hover:before {
   background-color: #313131;
-}
-.sidebar .logout {
-  position: absolute;
-  padding: 12px 16px;
-  text-align: center;
-  bottom: 40px;
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  column-gap: 16px;
-  cursor: pointer;
-}
-.sidebar .logout .icon img {
-  width: 16px;
-}
-.sidebar .logout:hover {
-  color: #313131;
 }
 </style>
