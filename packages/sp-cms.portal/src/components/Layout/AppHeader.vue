@@ -16,6 +16,7 @@
             class="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-full"
           >
             <Avatar
+              :src="userImageUrl"
               :fallback="name"
               class="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity"
             />
@@ -113,6 +114,26 @@ const userName = computed(() => {
   const userData = authStore.getUserData();
   return userData?.email || '';
 });
+
+const userImageUrl = computed(() => {
+  const userData = authStore.getUserData();
+  return getImageUrl(userData?.imageUrl);
+});
+
+// Helper function to convert relative image URLs to full URLs
+const getImageUrl = imageUrl => {
+  if (!imageUrl) return null;
+
+  // If it's already a full URL, return as is
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+
+  // If it's a relative URL, prepend the API base URL
+  const API_BASE_URL =
+    import.meta.env.VITE_ENDPOINT || 'https://sp-cms-api.yogicse12.workers.dev';
+  return `${API_BASE_URL}${imageUrl}`;
+};
 
 // Dropdown menu actions
 const goToProfile = () => {

@@ -151,7 +151,8 @@ const user = ref(null);
 // Load user data asynchronously
 const loadUserData = async () => {
   try {
-    user.value = await authStore.getUserData();
+    await authStore.fetchUserInfo();
+    user.value = authStore.getUserData();
   } catch (error) {
     console.error('Failed to load user data:', error);
   }
@@ -332,8 +333,9 @@ const handleImageUpload = async event => {
     const response = await api.post('/api/auth/upload-profile-image', formData);
 
     if (response.data.success) {
-      // Update local user data
-      user.value = { ...user.value, imageUrl: response.data.imageUrl };
+      // Update auth store and local user data
+      await authStore.fetchUserInfo();
+      user.value = authStore.getUserData();
       previewUrl.value = '';
 
       await AlertDialogService.alert({

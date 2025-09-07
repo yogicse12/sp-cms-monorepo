@@ -144,11 +144,38 @@ auth.get('/debug/users', async c => {
 
 // Protected route example
 auth.get('/profile', authenticate, async c => {
-  const user = c.get('user');
-  return c.json({
-    message: 'Profile accessed successfully',
-    user,
-  });
+  try {
+    const tokenUser = c.get('user');
+
+    // Fetch fresh user data from database to include imageUrl
+    const freshUser = await c.env.DB.prepare(
+      'SELECT id, email, name, image_url, created_at FROM users WHERE id = ?'
+    )
+      .bind(tokenUser.userId)
+      .first();
+
+    if (!freshUser) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    const user = {
+      id: (freshUser as any).id,
+      email: (freshUser as any).email,
+      name: (freshUser as any).name,
+      imageUrl: (freshUser as any).image_url,
+      createdAt: (freshUser as any).created_at,
+    };
+
+    return c.json({
+      message: 'Profile accessed successfully',
+      user,
+    });
+  } catch (error) {
+    return c.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      500
+    );
+  }
 });
 
 // Change password route
