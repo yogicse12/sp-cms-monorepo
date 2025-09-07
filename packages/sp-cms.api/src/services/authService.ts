@@ -13,6 +13,7 @@ export interface User {
   email: string;
   name: string;
   passwordHash: string;
+  imageUrl?: string;
   createdAt: string;
 }
 
@@ -48,6 +49,19 @@ export interface DeactivateUserResponse {
 
 export interface ActivateUserResponse {
   message: string;
+}
+
+export interface UpdateProfileImageRequest {
+  file: File | ArrayBuffer;
+  fileName: string;
+  contentType: string;
+}
+
+export interface UpdateProfileImageResponse {
+  success: boolean;
+  message: string;
+  imageUrl: string;
+  user: Omit<User, 'passwordHash'>;
 }
 
 export interface ResetPasswordRequest {
@@ -408,5 +422,115 @@ export class AuthService {
     return {
       message: 'Password reset successfully',
     };
+  }
+
+  static async updateProfileImage(
+    userId: string,
+    imageData: UpdateProfileImageRequest,
+    env: Env
+  ): Promise<UpdateProfileImageResponse> {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    // Get user
+    const user = await env.DB.prepare(
+      `
+      SELECT id, email, name, image_url
+      FROM users 
+      WHERE id = ?
+    `
+    )
+      .bind(userId)
+      .first();
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    try {
+      // Generate unique filename with user ID and timestamp
+      const timestamp = Date.now();
+      const fileExtension = imageData.fileName.split('.').pop() || 'jpg';
+      const fileName = `profile-images/${userId}/${timestamp}.${fileExtension}`;
+
+      // Upload to Cloudflare R2
+      const uploadResult = await env.BUCKET.put(fileName, imageData.file, {
+        httpMetadata: {
+          contentType: imageData.contentType,
+        },
+      });
+
+      if (!uploadResult) {
+        throw new Error('Failed to upload image to storage');
+      }
+
+      // Generate URL to serve the image through our API
+      const imageUrl = `/api/auth/image/${fileName}`;
+
+      // Delete old image if it exists
+      if ((user as any).image_url) {
+        try {
+          // Extract filename from URL path
+          const oldFileName = (user as any).image_url.replace(
+            '/api/auth/image/',
+            ''
+          );
+          await env.BUCKET.delete(oldFileName);
+        } catch (deleteError) {
+          // Log but don't fail if old image deletion fails
+          console.warn('Failed to delete old profile image:', deleteError);
+        }
+      }
+
+      // Update user with new image URL
+      const updateResult = await env.DB.prepare(
+        `
+        UPDATE users 
+        SET image_url = ?, updated_at = ?
+        WHERE id = ?
+      `
+      )
+        .bind(imageUrl, new Date().toISOString(), userId)
+        .run();
+
+      if (!updateResult.success) {
+        throw new Error('Failed to update user profile image');
+      }
+
+      // Return updated user data
+      const updatedUser = await env.DB.prepare(
+        `
+        SELECT id, email, name, image_url, created_at
+        FROM users 
+        WHERE id = ?
+      `
+      )
+        .bind(userId)
+        .first();
+
+      if (!updatedUser) {
+        throw new Error('Failed to retrieve updated user data');
+      }
+
+      return {
+        success: true,
+        message: 'Profile image updated successfully',
+        imageUrl: imageUrl,
+        user: {
+          id: (updatedUser as any).id,
+          email: (updatedUser as any).email,
+          name: (updatedUser as any).name,
+          imageUrl: (updatedUser as any).image_url,
+          createdAt: (updatedUser as any).created_at,
+        },
+      };
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update profile image'
+      );
+    }
   }
 }

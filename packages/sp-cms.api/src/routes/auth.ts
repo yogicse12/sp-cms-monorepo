@@ -110,11 +110,28 @@ auth.post('/debug/add-updated-at', async c => {
   }
 });
 
+// Migration route to add image_url column if it doesn't exist
+auth.post('/debug/add-image-url', async c => {
+  try {
+    await c.env.DB.prepare(`ALTER TABLE users ADD COLUMN image_url TEXT`).run();
+
+    return c.json({ message: 'image_url column added successfully' });
+  } catch (error) {
+    return c.json(
+      {
+        error:
+          error instanceof Error ? error.message : 'Column may already exist',
+      },
+      500
+    );
+  }
+});
+
 // Debug route to check users in table
 auth.get('/debug/users', async c => {
   try {
     const users = await c.env.DB.prepare(
-      'SELECT id, email, name, created_at FROM users'
+      'SELECT id, email, name, image_url, created_at FROM users'
     ).all();
     return c.json({ users: users.results });
   } catch (error) {
@@ -285,6 +302,90 @@ auth.put('/reset-password', authenticate, async c => {
     }
 
     return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// Upload profile image route
+auth.post('/upload-profile-image', authenticate, async c => {
+  try {
+    const user = c.get('user');
+
+    // Check content type
+    const contentType = c.req.header('Content-Type');
+    if (!contentType || !contentType.includes('multipart/form-data')) {
+      return c.json({ error: 'Content-Type must be multipart/form-data' }, 400);
+    }
+
+    let formData;
+    try {
+      formData = await c.req.formData();
+    } catch (parseError) {
+      console.error('FormData parsing error:', parseError);
+      return c.json({ error: 'Failed to parse form data' }, 400);
+    }
+
+    const file = formData.get('image') as File;
+
+    if (!file || !file.name) {
+      return c.json({ error: 'No file uploaded' }, 400);
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      return c.json({ error: 'File must be an image' }, 400);
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      return c.json({ error: 'File size must be less than 5MB' }, 400);
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await AuthService.updateProfileImage(
+      user.userId,
+      {
+        file: arrayBuffer,
+        fileName: file.name,
+        contentType: file.type,
+      },
+      c.env
+    );
+
+    return c.json(result, 200);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Image upload failed';
+
+    console.error('Upload error:', error);
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// Serve images from R2
+auth.get('/image/:path{.*}', async c => {
+  try {
+    const imagePath = c.req.param('path');
+
+    if (!imagePath) {
+      return c.json({ error: 'Image path is required' }, 400);
+    }
+
+    const object = await c.env.BUCKET.get(imagePath);
+
+    if (!object) {
+      return c.json({ error: 'Image not found' }, 404);
+    }
+
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set('etag', object.httpEtag);
+    headers.set('cache-control', 'public, max-age=31536000'); // Cache for 1 year
+
+    return new Response(object.body, {
+      headers,
+    });
+  } catch (error) {
+    return c.json({ error: 'Failed to retrieve image' }, 500);
   }
 });
 

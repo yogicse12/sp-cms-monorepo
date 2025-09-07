@@ -1,22 +1,83 @@
 <template>
   <div class="profile">
+    <!-- Profile Image Section -->
+    <div class="profile-image-section bg-white px-16 py-12 rounded-lg mb-8">
+      <h2 class="text-2xl font-bold mb-8">Profile Image</h2>
+      <div class="flex items-center gap-8">
+        <div class="relative">
+          <div
+            class="w-32 h-32 rounded-full bg-gray-200 overflow-hidden border-4 border-gray-300"
+          >
+            <img
+              v-if="user?.imageUrl || previewUrl"
+              :src="previewUrl || getImageUrl(user?.imageUrl)"
+              alt="Profile Image"
+              class="w-full h-full object-cover"
+            />
+            <div
+              v-else
+              class="w-full h-full flex items-center justify-center text-gray-500"
+            >
+              <User :size="48" />
+            </div>
+          </div>
+          <div
+            v-if="imageUploading"
+            class="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center"
+          >
+            <div
+              class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"
+            ></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-4">
+          <div class="flex gap-4">
+            <Button @click="triggerFileUpload" :disabled="imageUploading">
+              {{ imageUploading ? 'Uploading...' : 'Upload New Image' }}
+            </Button>
+            <Button
+              v-if="user?.imageUrl && !imageUploading"
+              variant="outline"
+              @click="removeImage"
+            >
+              Remove Image
+            </Button>
+          </div>
+          <p class="text-sm text-gray-500">
+            JPG, PNG or GIF. Max size 5MB. Recommended: 400x400px
+          </p>
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*"
+            @change="handleImageUpload"
+            class="hidden"
+          />
+        </div>
+      </div>
+    </div>
+
     <div class="profile-section bg-white px-16 py-12 rounded-lg mb-8">
       <h2 class="text-2xl font-bold mb-8">Personal Info</h2>
       <div class="grid grid-cols-3 gap-12">
         <div class="p-4 border border-gray-200 rounded-lg">
           <div class="text-secondary text-lg font-bold mb-2">Full Name</div>
-          <div class="text-lg">{{ user.name }}</div>
+          <div class="text-lg">{{ user?.name || 'Loading...' }}</div>
         </div>
         <div class="p-4 border border-gray-200 rounded-lg">
           <div class="text-secondary text-lg font-bold mb-2">Email Address</div>
-          <div class="text-lg">{{ user.email }}</div>
+          <div class="text-lg">{{ user?.email || 'Loading...' }}</div>
         </div>
         <div class="p-4 border border-gray-200 rounded-lg">
           <div class="text-secondary text-lg font-bold mb-2">
             Date of Joining
           </div>
           <div class="text-lg">
-            {{ dayjs(user.createdAt).format('DD MMMM, YYYY') }}
+            {{
+              user?.createdAt
+                ? dayjs(user.createdAt).format('DD MMMM, YYYY')
+                : 'Loading...'
+            }}
           </div>
         </div>
       </div>
@@ -78,6 +139,8 @@ import { useRouter } from 'vue-router';
 import Input from '@/components/ui/Input.vue';
 import Button from '@/components/ui/Button.vue';
 import AlertDialogService from '@/composables/useAlertDialog';
+import { User } from 'lucide-vue-next';
+import api from '@/services/api.js';
 
 const router = useRouter();
 
@@ -110,6 +173,9 @@ const errors = ref({
 });
 
 const isLoading = ref(false);
+const imageUploading = ref(false);
+const previewUrl = ref('');
+const fileInput = ref(null);
 
 const validateForm = () => {
   // Clear previous errors
@@ -204,6 +270,117 @@ const handleChangePassword = async () => {
       confirmPassword: '',
     };
   }
+};
+
+const getImageUrl = imageUrl => {
+  if (!imageUrl) return null;
+
+  // If it's already a full URL, return as is
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+
+  // If it's a relative URL, prepend the API base URL
+  const API_BASE_URL =
+    import.meta.env.VITE_ENDPOINT || 'https://sp-cms-api.yogicse12.workers.dev';
+  return `${API_BASE_URL}${imageUrl}`;
+};
+
+const triggerFileUpload = () => {
+  fileInput.value?.click();
+};
+
+const handleImageUpload = async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    await AlertDialogService.alert({
+      title: 'Invalid File Type',
+      text: 'Please select an image file (JPG, PNG, or GIF)',
+      confirmButtonText: 'OK',
+      confirmVariant: 'destructive',
+    });
+    return;
+  }
+
+  // Validate file size (5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    await AlertDialogService.alert({
+      title: 'File Too Large',
+      text: 'Image size must be less than 5MB',
+      confirmButtonText: 'OK',
+      confirmVariant: 'destructive',
+    });
+    return;
+  }
+
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = e => {
+    previewUrl.value = e.target.result;
+  };
+  reader.readAsDataURL(file);
+
+  // Upload image
+  imageUploading.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await api.post('/api/auth/upload-profile-image', formData);
+
+    if (response.data.success) {
+      // Update local user data
+      user.value = { ...user.value, imageUrl: response.data.imageUrl };
+      previewUrl.value = '';
+
+      await AlertDialogService.alert({
+        title: 'Success!',
+        text: 'Profile image updated successfully',
+        confirmButtonText: 'OK',
+      });
+    }
+  } catch (error) {
+    previewUrl.value = '';
+    await AlertDialogService.alert({
+      title: 'Upload Failed',
+      text: error.response?.data?.error || 'Failed to upload image',
+      confirmButtonText: 'OK',
+      confirmVariant: 'destructive',
+    });
+  } finally {
+    imageUploading.value = false;
+    // Clear the file input
+    if (fileInput.value) {
+      fileInput.value.value = '';
+    }
+  }
+};
+
+const removeImage = async () => {
+  const result = await AlertDialogService.confirm({
+    title: 'Remove Profile Image?',
+    text: 'Are you sure you want to remove your profile image?',
+    confirmButtonText: 'Yes, Remove',
+    cancelButtonText: 'Cancel',
+    confirmVariant: 'destructive',
+  });
+
+  if (!result.isConfirmed) {
+    return;
+  }
+
+  // For now, just clear the local image
+  // You could implement a separate API endpoint to remove the image
+  user.value = { ...user.value, imageUrl: null };
+
+  await AlertDialogService.alert({
+    title: 'Image Removed',
+    text: 'Your profile image has been removed',
+    confirmButtonText: 'OK',
+  });
 };
 
 const logout = () => {

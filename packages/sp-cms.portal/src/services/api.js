@@ -17,7 +17,6 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 30 second timeout
   headers: {
-    'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
   },
   // Enable credentials based on environment configuration
@@ -45,8 +44,17 @@ const processQueue = (error, token = null) => {
 // Request interceptor with security and auto-refresh
 api.interceptors.request.use(
   async config => {
-    // Input sanitization for request data
-    if (config.data) {
+    // Set Content-Type based on data type
+    if (config.data instanceof FormData) {
+      // Don't set Content-Type for FormData, let browser set it with boundary
+      delete config.headers['Content-Type'];
+    } else {
+      // Set JSON Content-Type for non-FormData requests
+      config.headers['Content-Type'] = 'application/json';
+    }
+
+    // Input sanitization for request data (skip for FormData)
+    if (config.data && !(config.data instanceof FormData)) {
       config.data = sanitizeRequestData(config.data);
     }
 
