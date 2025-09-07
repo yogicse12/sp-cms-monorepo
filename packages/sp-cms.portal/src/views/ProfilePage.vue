@@ -374,15 +374,31 @@ const removeImage = async () => {
     return;
   }
 
-  // For now, just clear the local image
-  // You could implement a separate API endpoint to remove the image
-  user.value = { ...user.value, imageUrl: null };
+  imageUploading.value = true;
+  try {
+    const response = await api.delete('/api/auth/remove-profile-image');
 
-  await AlertDialogService.alert({
-    title: 'Image Removed',
-    text: 'Your profile image has been removed',
-    confirmButtonText: 'OK',
-  });
+    if (response.data.success) {
+      // Update auth store and local user data
+      await authStore.fetchUserInfo();
+      user.value = authStore.getUserData();
+
+      await AlertDialogService.alert({
+        title: 'Image Removed',
+        text: 'Your profile image has been removed successfully',
+        confirmButtonText: 'OK',
+      });
+    }
+  } catch (error) {
+    await AlertDialogService.alert({
+      title: 'Remove Failed',
+      text: error.response?.data?.error || 'Failed to remove profile image',
+      confirmButtonText: 'OK',
+      confirmVariant: 'destructive',
+    });
+  } finally {
+    imageUploading.value = false;
+  }
 };
 
 const logout = () => {

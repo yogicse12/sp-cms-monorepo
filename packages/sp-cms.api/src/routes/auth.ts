@@ -388,6 +388,23 @@ auth.post('/upload-profile-image', authenticate, async c => {
   }
 });
 
+// Remove profile image route
+auth.delete('/remove-profile-image', authenticate, async c => {
+  try {
+    const user = c.get('user');
+
+    const result = await AuthService.removeProfileImage(user.userId, c.env);
+
+    return c.json(result, 200);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to remove profile image';
+
+    console.error('Remove image error:', error);
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
 // Serve images from R2
 auth.get('/image/:path{.*}', async c => {
   try {

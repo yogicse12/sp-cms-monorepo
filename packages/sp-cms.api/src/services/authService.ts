@@ -64,6 +64,12 @@ export interface UpdateProfileImageResponse {
   user: Omit<User, 'passwordHash'>;
 }
 
+export interface RemoveProfileImageResponse {
+  success: boolean;
+  message: string;
+  user: Omit<User, 'passwordHash'>;
+}
+
 export interface ResetPasswordRequest {
   email: string;
   newPassword: string;
@@ -530,6 +536,95 @@ export class AuthService {
         error instanceof Error
           ? error.message
           : 'Failed to update profile image'
+      );
+    }
+  }
+
+  static async removeProfileImage(
+    userId: string,
+    env: Env
+  ): Promise<RemoveProfileImageResponse> {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    // Get user with current image
+    const user = await env.DB.prepare(
+      `
+      SELECT id, email, name, image_url
+      FROM users 
+      WHERE id = ?
+    `
+    )
+      .bind(userId)
+      .first();
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    try {
+      // Delete image from R2 if it exists
+      if ((user as any).image_url) {
+        try {
+          // Extract filename from URL path
+          const fileName = (user as any).image_url.replace(
+            '/api/auth/image/',
+            ''
+          );
+          await env.BUCKET.delete(fileName);
+        } catch (deleteError) {
+          // Log but don't fail if image deletion fails
+          console.warn('Failed to delete profile image from R2:', deleteError);
+        }
+      }
+
+      // Update user to remove image URL
+      const updateResult = await env.DB.prepare(
+        `
+        UPDATE users 
+        SET image_url = NULL, updated_at = ?
+        WHERE id = ?
+      `
+      )
+        .bind(new Date().toISOString(), userId)
+        .run();
+
+      if (!updateResult.success) {
+        throw new Error('Failed to remove profile image from database');
+      }
+
+      // Return updated user data
+      const updatedUser = await env.DB.prepare(
+        `
+        SELECT id, email, name, image_url, created_at
+        FROM users 
+        WHERE id = ?
+      `
+      )
+        .bind(userId)
+        .first();
+
+      if (!updatedUser) {
+        throw new Error('Failed to retrieve updated user data');
+      }
+
+      return {
+        success: true,
+        message: 'Profile image removed successfully',
+        user: {
+          id: (updatedUser as any).id,
+          email: (updatedUser as any).email,
+          name: (updatedUser as any).name,
+          imageUrl: (updatedUser as any).image_url, // Should be null
+          createdAt: (updatedUser as any).created_at,
+        },
+      };
+    } catch (error) {
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to remove profile image'
       );
     }
   }
