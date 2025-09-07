@@ -16,6 +16,7 @@
             placeholder="Enter blog post title..."
             required
             :disabled="loading"
+            size="sm"
           />
         </div>
 

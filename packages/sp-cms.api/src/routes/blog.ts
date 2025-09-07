@@ -41,6 +41,58 @@ blog.post('/add', authenticate, async c => {
   }
 });
 
+// Get posts with pagination, filtering, and search
+blog.get('/get-with-pagination', authenticate, async c => {
+  try {
+    // Get query parameters
+    const page = parseInt(c.req.query('page') || '1', 10);
+    const limit = parseInt(c.req.query('limit') || '10', 10);
+    const status = c.req.query('status') as
+      | 'draft'
+      | 'published'
+      | 'archived'
+      | 'scheduled'
+      | undefined;
+    const search = c.req.query('search');
+
+    // Validate status parameter if provided
+    if (
+      status &&
+      !['draft', 'published', 'archived', 'scheduled'].includes(status)
+    ) {
+      return c.json(
+        {
+          error:
+            'Invalid status. Must be one of: draft, published, archived, scheduled',
+        },
+        400
+      );
+    }
+
+    // Validate pagination parameters
+    if (page < 1 || limit < 1 || limit > 100) {
+      return c.json(
+        {
+          error:
+            'Invalid pagination parameters. Page must be >= 1, limit must be 1-100',
+        },
+        400
+      );
+    }
+
+    const result = await BlogService.getPostsWithPagination(
+      { page, limit, status, search },
+      c.env
+    );
+
+    return c.json(result, 200);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch posts';
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
 // Migration route to create blog_posts table
 blog.post('/debug/migrate', authenticate, async c => {
   try {

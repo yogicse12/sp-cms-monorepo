@@ -1,11 +1,30 @@
 import type { Env } from '../types/env';
-import type { CreateBlogPostRequest } from '../models/BlogPost';
+import type { CreateBlogPostRequest, BlogPost } from '../models/BlogPost';
 
 export interface CreateBlogPostResponse {
   success: boolean;
   message: string;
   id: string;
   slug: string;
+}
+
+export interface GetPostsQuery {
+  page?: number;
+  limit?: number;
+  status?: 'draft' | 'published' | 'archived' | 'scheduled';
+  search?: string;
+}
+
+export interface PaginatedPostsResponse {
+  posts: BlogPost[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
 
 export class BlogService {
@@ -185,6 +204,95 @@ export class BlogService {
       return { message: 'Blog posts table created successfully' };
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
+
+  static async getPostsWithPagination(
+    query: GetPostsQuery,
+    env: Env
+  ): Promise<PaginatedPostsResponse> {
+    const page = Math.max(1, query.page || 1);
+    const limit = Math.min(100, Math.max(1, query.limit || 10)); // Max 100, min 1, default 10
+    const offset = (page - 1) * limit;
+
+    try {
+      // Build WHERE clause
+      const conditions: string[] = [];
+      const params: any[] = [];
+
+      // Filter by status
+      if (query.status) {
+        conditions.push('status = ?');
+        params.push(query.status);
+      }
+
+      // Search by title
+      if (query.search && query.search.trim()) {
+        conditions.push('title LIKE ?');
+        params.push(`%${query.search.trim()}%`);
+      }
+
+      const whereClause =
+        conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+      // Get total count
+      const countQuery = `SELECT COUNT(*) as total FROM blog_posts ${whereClause}`;
+      const countResult = await env.DB.prepare(countQuery)
+        .bind(...params)
+        .first();
+      const total = (countResult as any)?.total || 0;
+
+      // Get paginated posts
+      const postsQuery = `
+        SELECT 
+          id, title, slug, excerpt, content, author, status, 
+          publishedAt, updatedAt, scheduledAt, tags, featuredImage, 
+          isFeatured, createdAt
+        FROM blog_posts 
+        ${whereClause}
+        ORDER BY createdAt DESC
+        LIMIT ? OFFSET ?
+      `;
+
+      const postsResult = await env.DB.prepare(postsQuery)
+        .bind(...params, limit, offset)
+        .all();
+
+      const posts: BlogPost[] = (postsResult.results || []).map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        excerpt: row.excerpt || '',
+        content: row.content,
+        author: row.author,
+        status: row.status as 'draft' | 'published' | 'archived' | 'scheduled',
+        publishedAt: row.publishedAt,
+        updatedAt: row.updatedAt,
+        scheduledAt: row.scheduledAt,
+        tags: row.tags || '',
+        featuredImage: row.featuredImage,
+        isFeatured: Boolean(row.isFeatured),
+        createdAt: row.createdAt,
+      }));
+
+      // Calculate pagination info
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        posts,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
+      };
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : 'Failed to fetch posts'
+      );
     }
   }
 }
