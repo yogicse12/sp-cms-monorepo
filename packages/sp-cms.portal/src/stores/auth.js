@@ -246,8 +246,8 @@ export const useAuthStore = defineStore('auth', {
 
         // If found in cookie but not in memory, restore to memory
         if (accessToken && !tokenManager.getAccessToken()) {
-          // Store in token manager for current session
-          tokenManager.setAccessToken(accessToken, 24 * 60 * 60); // 24h
+          // Store in token manager for current session (24h to match API)
+          tokenManager.setAccessToken(accessToken, 86400); // 24h = 86400 seconds
         }
 
         // Try to restore user data from localStorage

@@ -25,10 +25,10 @@ class TokenManager {
   /**
    * Set access token with automatic expiry management
    * @param {string} token - Access token
-   * @param {number} expiresIn - Token expiry in seconds (default 15 minutes)
+   * @param {number} expiresIn - Token expiry in seconds (default 24 hours)
    */
-  setAccessToken(token, expiresIn = 900) {
-    // 15 minutes default
+  setAccessToken(token, expiresIn = 86400) {
+    // 24 hours default to match API
     this.accessToken = token;
     this.tokenExpiry = Date.now() + expiresIn * 1000;
 
