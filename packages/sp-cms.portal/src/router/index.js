@@ -5,6 +5,7 @@ import DefaultLayout from '@/layouts/DefaultLayout.vue';
 import LoginPage from '@/views/auth/LoginPage.vue';
 import HomeView from '@/views/HomeView.vue';
 import BlogPage from '@/views/Blog/index.vue';
+import PostDetails from '@/views/Blog/PostDetails.vue';
 import ProfilePage from '@/views/ProfilePage.vue';
 
 const router = createRouter({
@@ -41,6 +42,12 @@ const router = createRouter({
           path: '/blog',
           name: 'Blog',
           component: BlogPage,
+          meta: { requiresAuth: true },
+        },
+        {
+          path: '/blog/post/:slug',
+          name: 'PostDetails',
+          component: PostDetails,
           meta: { requiresAuth: true },
         },
         {
