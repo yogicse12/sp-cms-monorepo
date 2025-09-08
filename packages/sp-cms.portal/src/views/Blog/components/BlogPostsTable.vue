@@ -76,7 +76,7 @@
             <TableCell class="text-right">
               <Button
                 variant="outline"
-                @click="navigateToPost(post.slug)"
+                @click="navigateToPost(post.id)"
                 class="h-8 w-8 p-0 hover:bg-gray-100"
               >
                 <ArrowRight class="h-4 w-4" />
@@ -274,8 +274,8 @@ const changePage = page => {
   }
 };
 
-const navigateToPost = slug => {
-  router.push(`/blog/post/${slug}`);
+const navigateToPost = id => {
+  router.push(`/blog/post/${id}/details`);
 };
 
 // Expose fetchPosts method for parent component

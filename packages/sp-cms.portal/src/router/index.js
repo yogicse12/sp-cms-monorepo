@@ -45,7 +45,7 @@ const router = createRouter({
           meta: { requiresAuth: true },
         },
         {
-          path: '/blog/post/:slug',
+          path: '/blog/post/:id/details',
           name: 'PostDetails',
           component: PostDetails,
           meta: { requiresAuth: true },
