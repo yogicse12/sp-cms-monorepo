@@ -23,13 +23,18 @@
       class="flex-1 grid grid-cols-7 gap-4 editor pt-[48px] p-0 overflow-hidden"
     >
       <div class="col-span-5 overflow-y-auto">
-        <div
-          class="bg-gray-50 rounded-lg p-4 border border-gray-200 min-h-full"
-        ></div>
+        <div class="min-h-full h-full">
+          <ContentEditor
+            id="content"
+            v-model="article.Content"
+            :display-mode="displayMode"
+            class="h-full"
+          />
+        </div>
       </div>
       <div class="col-span-2 overflow-y-auto">
         <div
-          class="bg-gray-50 rounded-lg p-4 border border-gray-200 min-h-full"
+          class="bg-white rounded-lg p-4 border border-gray-200 min-h-full"
         ></div>
       </div>
     </div>
@@ -37,10 +42,17 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
+import ContentEditor from '@/components/common/ContentEditor.vue';
 import { useRouter } from 'vue-router';
 import Button from '@/components/ui/Button.vue';
 import { ArrowLeft, Save, CloudUpload } from 'lucide-vue-next';
 const router = useRouter();
+
+const article = ref({
+  Content: '',
+});
+const displayMode = ref('EDIT');
 </script>
 
 <style scoped>
