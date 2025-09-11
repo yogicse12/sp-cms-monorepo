@@ -654,12 +654,14 @@ onBeforeUnmount(() => {
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     overflow: hidden;
   }
   :deep(.editor-content-wrapper > div) {
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
   }
   :deep(.ProseMirror) {
     padding: 8px;
@@ -668,7 +670,9 @@ onBeforeUnmount(() => {
     }
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     min-height: 0;
+    height: 0;
     h1 {
       font-size: 3rem;
       line-height: 1;

@@ -32,8 +32,9 @@ class TokenManager {
     this.accessToken = token;
     this.tokenExpiry = Date.now() + expiresIn * 1000;
 
-    // Schedule automatic refresh 2 minutes before expiry
-    this.scheduleTokenRefresh(expiresIn - 120);
+    // For 24h tokens, schedule refresh 1 hour before expiry (or skip auto-refresh for simplicity)
+    // Since API uses 24h tokens without refresh, we'll disable auto-refresh
+    // this.scheduleTokenRefresh(expiresIn - 3600); // 1 hour before
   }
 
   /**
@@ -303,8 +304,8 @@ class TokenManager {
     let lastFocus = Date.now();
     window.addEventListener('focus', () => {
       const timeDiff = Date.now() - lastFocus;
-      // If away for more than 30 minutes, clear tokens
-      if (timeDiff > 1800000) {
+      // If away for more than 24 hours (matching token expiry), clear tokens
+      if (timeDiff > 86400000) {
         this.clearAllTokens();
         window.location.href = '/login';
       }

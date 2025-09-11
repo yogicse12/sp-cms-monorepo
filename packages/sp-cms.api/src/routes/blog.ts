@@ -2,7 +2,10 @@ import { Hono } from 'hono';
 import { authenticate } from '../middleware/auth';
 import { BlogService } from '../services/blogService';
 import type { Env } from '../types/env';
-import type { CreateBlogPostRequest } from '../models/BlogPost';
+import type {
+  CreateBlogPostRequest,
+  UpdateBlogPostRequest,
+} from '../models/BlogPost';
 
 type BlogContext = {
   Bindings: Env;
@@ -105,6 +108,53 @@ blog.post('/debug/migrate', authenticate, async c => {
       },
       500
     );
+  }
+});
+
+blog.get('/fetch/:id', authenticate, async c => {
+  try {
+    const id = c.req.param('id');
+    const result = await BlogService.fetchPost(id, c.env);
+    return c.json(result);
+  } catch (error) {
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500
+    );
+  }
+});
+
+blog.put('/update/:id', authenticate, async c => {
+  try {
+    const id = c.req.param('id');
+    const requestData: UpdateBlogPostRequest = await c.req.json();
+
+    const result = await BlogService.updatePost(id, requestData, c.env);
+
+    return c.json(result, 200);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Invalid JSON payload';
+
+    if (errorMessage.includes('Post not found')) {
+      return c.json({ error: errorMessage }, 404);
+    }
+
+    if (errorMessage.includes('already exists')) {
+      return c.json({ error: errorMessage }, 409);
+    }
+
+    if (
+      errorMessage.includes('required') ||
+      errorMessage.includes('must be') ||
+      errorMessage.includes('No fields to update')
+    ) {
+      return c.json({ error: errorMessage }, 400);
+    }
+
+    return c.json({ error: errorMessage }, 500);
   }
 });
 

@@ -26,8 +26,8 @@ export const useAuthStore = defineStore('auth', {
     userInfo: state => state.user,
 
     isSessionActive: state => {
-      // Consider session active if last activity was within 30 minutes
-      return Date.now() - state.lastActivity < 1800000; // 30 minutes
+      // Consider session active if last activity was within 24 hours (matching JWT token expiry)
+      return Date.now() - state.lastActivity < 86400000; // 24 hours (86400000 ms)
     },
   },
 

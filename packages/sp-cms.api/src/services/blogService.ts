@@ -1,5 +1,9 @@
 import type { Env } from '../types/env';
-import type { CreateBlogPostRequest, BlogPost } from '../models/BlogPost';
+import type {
+  CreateBlogPostRequest,
+  UpdateBlogPostRequest,
+  BlogPost,
+} from '../models/BlogPost';
 
 export interface CreateBlogPostResponse {
   success: boolean;
@@ -293,6 +297,187 @@ export class BlogService {
       throw new Error(
         error instanceof Error ? error.message : 'Failed to fetch posts'
       );
+    }
+  }
+
+  static async fetchPost(id: string, env: Env): Promise<BlogPost> {
+    try {
+      const postQuery = `
+        SELECT 
+          id, title, slug, excerpt, content, author, status, 
+          publishedAt, updatedAt, scheduledAt, tags, featuredImage, 
+          isFeatured, createdAt
+        FROM blog_posts 
+        WHERE id = ?
+      `;
+
+      const result = await env.DB.prepare(postQuery).bind(id).first();
+
+      if (!result) {
+        throw new Error('Post not found');
+      }
+
+      const post: BlogPost = {
+        id: result.id as string,
+        title: result.title as string,
+        slug: result.slug as string,
+        excerpt: (result.excerpt as string) || '',
+        content: result.content as string,
+        author: result.author as string,
+        status: result.status as
+          | 'draft'
+          | 'published'
+          | 'archived'
+          | 'scheduled',
+        publishedAt: result.publishedAt as string,
+        updatedAt: result.updatedAt as string,
+        scheduledAt: result.scheduledAt as string,
+        tags: (result.tags as string) || '',
+        featuredImage: result.featuredImage as string,
+        isFeatured: Boolean(result.isFeatured),
+        createdAt: result.createdAt as string,
+      };
+
+      return post;
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : 'Failed to fetch post'
+      );
+    }
+  }
+
+  static validateUpdateBlogPostInput(
+    data: UpdateBlogPostRequest
+  ): string | null {
+    if (data.title && data.title.length < 3) {
+      return 'Title must be at least 3 characters long';
+    }
+
+    if (data.excerpt && data.excerpt.length < 10) {
+      return 'Excerpt must be at least 10 characters long';
+    }
+
+    if (data.status) {
+      const validStatuses = ['draft', 'published', 'archived', 'scheduled'];
+      if (!validStatuses.includes(data.status)) {
+        return 'Status must be one of: draft, published, archived, scheduled';
+      }
+
+      if (data.status === 'scheduled' && !data.scheduledAt) {
+        return 'scheduledAt is required when status is scheduled';
+      }
+    }
+
+    return null;
+  }
+
+  static async updatePost(
+    id: string,
+    data: UpdateBlogPostRequest,
+    env: Env
+  ): Promise<{ success: boolean; message: string; post: BlogPost }> {
+    const validationError = this.validateUpdateBlogPostInput(data);
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    try {
+      const existingPost = await this.fetchPost(id, env);
+
+      const now = new Date().toISOString();
+
+      const updateFields: string[] = [];
+      const updateValues: any[] = [];
+
+      if (data.title !== undefined) {
+        const newSlug = this.generateSlugFromTitle(data.title);
+        updateFields.push('title = ?', 'slug = ?');
+        updateValues.push(data.title, newSlug);
+      }
+
+      if (data.excerpt !== undefined) {
+        updateFields.push('excerpt = ?');
+        updateValues.push(data.excerpt);
+      }
+
+      if (data.content !== undefined) {
+        updateFields.push('content = ?');
+        updateValues.push(data.content);
+      }
+
+      if (data.status !== undefined) {
+        updateFields.push('status = ?');
+        updateValues.push(data.status);
+
+        if (data.status === 'published' && !existingPost.publishedAt) {
+          updateFields.push('publishedAt = ?');
+          updateValues.push(now);
+        }
+      }
+
+      if (data.scheduledAt !== undefined) {
+        updateFields.push('scheduledAt = ?');
+        updateValues.push(data.scheduledAt);
+      }
+
+      if (data.tags !== undefined) {
+        updateFields.push('tags = ?');
+        updateValues.push(data.tags);
+      }
+
+      if (data.featuredImage !== undefined) {
+        updateFields.push('featuredImage = ?');
+        updateValues.push(data.featuredImage);
+      }
+
+      if (data.isFeatured !== undefined) {
+        updateFields.push('isFeatured = ?');
+        updateValues.push(data.isFeatured);
+      }
+
+      if (updateFields.length === 0) {
+        throw new Error('No fields to update');
+      }
+
+      updateFields.push('updatedAt = ?');
+      updateValues.push(now);
+
+      const updateQuery = `
+        UPDATE blog_posts 
+        SET ${updateFields.join(', ')}
+        WHERE id = ?
+      `;
+
+      updateValues.push(id);
+
+      const result = await env.DB.prepare(updateQuery)
+        .bind(...updateValues)
+        .run();
+
+      if (!result.success) {
+        throw new Error(`Database error: ${result.error}`);
+      }
+
+      if (!result.success) {
+        throw new Error('Post not found or no changes made');
+      }
+
+      const updatedPost = await this.fetchPost(id, env);
+
+      return {
+        success: true,
+        message: 'Post updated successfully',
+        post: updatedPost,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      if (errorMessage.includes('UNIQUE constraint failed')) {
+        throw new Error('A post with this title already exists');
+      }
+
+      throw error;
     }
   }
 }

@@ -26,3 +26,14 @@ export interface CreateBlogPostRequest {
   featuredImage?: string;
   isFeatured?: boolean; // defaults to false
 }
+
+export interface UpdateBlogPostRequest {
+  title?: string;
+  excerpt?: string;
+  content?: string;
+  status?: 'draft' | 'published' | 'archived' | 'scheduled';
+  scheduledAt?: string;
+  tags?: string;
+  featuredImage?: string;
+  isFeatured?: boolean;
+}
