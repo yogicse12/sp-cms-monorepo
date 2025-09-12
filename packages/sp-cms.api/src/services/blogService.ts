@@ -1,8 +1,14 @@
 import type { Env } from '../types/env';
-import type {
-  CreateBlogPostRequest,
-  UpdateBlogPostRequest,
-  BlogPost,
+import {
+  BlogPostSchema,
+  CreateBlogPostRequestSchema,
+  UpdateBlogPostRequestSchema,
+  GetPostsQuerySchema,
+  PostIdSchema,
+  type BlogPost,
+  type CreateBlogPostRequest,
+  type UpdateBlogPostRequest,
+  type GetPostsQuery,
 } from '../models/BlogPost';
 
 export interface CreateBlogPostResponse {
@@ -12,12 +18,7 @@ export interface CreateBlogPostResponse {
   slug: string;
 }
 
-export interface GetPostsQuery {
-  page?: number;
-  limit?: number;
-  status?: 'draft' | 'published' | 'archived' | 'scheduled';
-  search?: string;
-}
+// Removed GetPostsQuery interface - now using Zod schema
 
 export interface PaginatedPostsResponse {
   posts: BlogPost[];
@@ -42,54 +43,24 @@ export class BlogService {
       .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
   }
 
-  static validateCreateBlogPostInput(
-    data: CreateBlogPostRequest
-  ): string | null {
-    if (!data.title || !data.excerpt) {
-      return 'Title and excerpt are required';
-    }
-
-    if (data.title.length < 3) {
-      return 'Title must be at least 3 characters long';
-    }
-
-    if (data.excerpt.length < 10) {
-      return 'Excerpt must be at least 10 characters long';
-    }
-
-    // Validate status if provided
-    if (data.status) {
-      const validStatuses = ['draft', 'published', 'archived', 'scheduled'];
-      if (!validStatuses.includes(data.status)) {
-        return 'Status must be one of: draft, published, archived, scheduled';
-      }
-
-      // If status is scheduled, scheduledAt must be provided
-      if (data.status === 'scheduled' && !data.scheduledAt) {
-        return 'scheduledAt is required when status is scheduled';
-      }
-    }
-
-    return null;
+  static validateCreateBlogPostInput(data: any): CreateBlogPostRequest {
+    return CreateBlogPostRequestSchema.parse(data);
   }
 
   static async createBlogPost(
-    data: CreateBlogPostRequest,
+    data: any,
     authorEmail: string,
     env: Env
   ): Promise<CreateBlogPostResponse> {
-    const validationError = this.validateCreateBlogPostInput(data);
-    if (validationError) {
-      throw new Error(validationError);
-    }
+    const validatedData = this.validateCreateBlogPostInput(data);
 
     // Generate ID, slug, and timestamps
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    const slug = this.generateSlugFromTitle(data.title);
-    const status = data.status || 'draft'; // Default to draft
+    const slug = this.generateSlugFromTitle(validatedData.title);
+    const status = validatedData.status || 'draft'; // Default to draft
     const publishedAt = status === 'published' ? now : null;
-    const author = data.author || authorEmail;
+    const author = validatedData.author || authorEmail;
 
     try {
       // Insert blog post into database
@@ -104,18 +75,18 @@ export class BlogService {
       )
         .bind(
           id,
-          data.title,
+          validatedData.title,
           slug,
-          data.excerpt,
-          data.content || '',
+          validatedData.excerpt,
+          validatedData.content || '',
           author,
           status,
           publishedAt,
           now,
-          data.scheduledAt || null,
-          data.tags || '',
-          data.featuredImage || null,
-          data.isFeatured ?? false,
+          validatedData.scheduledAt || null,
+          validatedData.tags || '',
+          validatedData.featuredImage || null,
+          validatedData.isFeatured ?? false,
           now
         )
         .run();
@@ -149,18 +120,18 @@ export class BlogService {
           )
             .bind(
               id,
-              data.title,
+              validatedData.title,
               uniqueSlug,
-              data.excerpt,
-              data.content || '',
+              validatedData.excerpt,
+              validatedData.content || '',
               author,
               status,
               publishedAt,
               now,
-              data.scheduledAt || null,
-              data.tags || '',
-              data.featuredImage || null,
-              data.isFeatured ?? false,
+              validatedData.scheduledAt || null,
+              validatedData.tags || '',
+              validatedData.featuredImage || null,
+              validatedData.isFeatured ?? false,
               now
             )
             .run();
@@ -212,11 +183,12 @@ export class BlogService {
   }
 
   static async getPostsWithPagination(
-    query: GetPostsQuery,
+    queryData: any,
     env: Env
   ): Promise<PaginatedPostsResponse> {
-    const page = Math.max(1, query.page || 1);
-    const limit = Math.min(100, Math.max(1, query.limit || 10)); // Max 100, min 1, default 10
+    const query = GetPostsQuerySchema.parse(queryData);
+    const page = Math.max(1, query.page);
+    const limit = Math.min(100, Math.max(1, query.limit));
     const offset = (page - 1) * limit;
 
     try {
@@ -300,7 +272,8 @@ export class BlogService {
     }
   }
 
-  static async fetchPost(id: string, env: Env): Promise<BlogPost> {
+  static async fetchPost(idData: any, env: Env): Promise<BlogPost> {
+    const { id } = PostIdSchema.parse({ id: idData });
     try {
       const postQuery = `
         SELECT 
@@ -346,40 +319,17 @@ export class BlogService {
     }
   }
 
-  static validateUpdateBlogPostInput(
-    data: UpdateBlogPostRequest
-  ): string | null {
-    if (data.title && data.title.length < 3) {
-      return 'Title must be at least 3 characters long';
-    }
-
-    if (data.excerpt && data.excerpt.length < 10) {
-      return 'Excerpt must be at least 10 characters long';
-    }
-
-    if (data.status) {
-      const validStatuses = ['draft', 'published', 'archived', 'scheduled'];
-      if (!validStatuses.includes(data.status)) {
-        return 'Status must be one of: draft, published, archived, scheduled';
-      }
-
-      if (data.status === 'scheduled' && !data.scheduledAt) {
-        return 'scheduledAt is required when status is scheduled';
-      }
-    }
-
-    return null;
+  static validateUpdateBlogPostInput(data: any): UpdateBlogPostRequest {
+    return UpdateBlogPostRequestSchema.parse(data);
   }
 
   static async updatePost(
-    id: string,
-    data: UpdateBlogPostRequest,
+    idData: any,
+    updateData: any,
     env: Env
   ): Promise<{ success: boolean; message: string; post: BlogPost }> {
-    const validationError = this.validateUpdateBlogPostInput(data);
-    if (validationError) {
-      throw new Error(validationError);
-    }
+    const { id } = PostIdSchema.parse({ id: idData });
+    const data = this.validateUpdateBlogPostInput(updateData);
 
     try {
       const existingPost = await this.fetchPost(id, env);

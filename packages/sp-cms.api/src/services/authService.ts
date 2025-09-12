@@ -1,119 +1,62 @@
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import type { Env } from '../types/env';
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  name: string;
-}
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  passwordHash: string;
-  imageUrl?: string;
-  createdAt: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  message: string;
-  token: string;
-  user: Omit<User, 'passwordHash'>;
-}
-
-export interface RegisterResponse {
-  success: boolean;
-  message: string;
-  user: Omit<User, 'passwordHash'>;
-}
-
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
-}
-
-export interface ChangePasswordResponse {
-  message: string;
-}
-
-export interface DeactivateUserResponse {
-  message: string;
-}
-
-export interface ActivateUserResponse {
-  message: string;
-}
-
-export interface UpdateProfileImageRequest {
-  file: File | ArrayBuffer;
-  fileName: string;
-  contentType: string;
-}
-
-export interface UpdateProfileImageResponse {
-  success: boolean;
-  message: string;
-  imageUrl: string;
-  user: Omit<User, 'passwordHash'>;
-}
-
-export interface RemoveProfileImageResponse {
-  success: boolean;
-  message: string;
-  user: Omit<User, 'passwordHash'>;
-}
-
-export interface ResetPasswordRequest {
-  email: string;
-  newPassword: string;
-  confirmPassword: string;
-}
-
-export interface ResetPasswordResponse {
-  message: string;
-}
+import {
+  RegisterRequestSchema,
+  LoginRequestSchema,
+  ChangePasswordRequestSchema,
+  ResetPasswordRequestSchema,
+  UpdateProfileImageRequestSchema,
+  UserIdSchema,
+  AdminActionRequestSchema,
+  type RegisterRequest,
+  type LoginRequest,
+  type ChangePasswordRequest,
+  type ResetPasswordRequest,
+  type UpdateProfileImageRequest,
+  type LoginResponse,
+  type RegisterResponse,
+  type ChangePasswordResponse,
+  type ResetPasswordResponse,
+  type UpdateProfileImageResponse,
+  type RemoveProfileImageResponse,
+  type DeactivateUserResponse,
+  type ActivateUserResponse,
+  type User,
+  type PublicUser,
+} from '../models/User';
 
 export class AuthService {
-  static validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+  static validateRegistrationInput(data: any): RegisterRequest {
+    return RegisterRequestSchema.parse(data);
   }
 
-  static validatePassword(password: string): boolean {
-    return password.length >= 8;
+  static validateLoginInput(data: any): LoginRequest {
+    return LoginRequestSchema.parse(data);
   }
 
-  static validateRegistrationInput(data: RegisterRequest): string | null {
-    if (!data.email || !data.password || !data.name) {
-      return 'Email, password, and name are required';
-    }
+  static validateChangePasswordInput(data: any): ChangePasswordRequest {
+    return ChangePasswordRequestSchema.parse(data);
+  }
 
-    if (!this.validateEmail(data.email)) {
-      return 'Invalid email format';
-    }
+  static validateResetPasswordInput(data: any): ResetPasswordRequest {
+    return ResetPasswordRequestSchema.parse(data);
+  }
 
-    if (!this.validatePassword(data.password)) {
-      return 'Password must be at least 8 characters long';
-    }
+  static validateUpdateProfileImageInput(data: any): UpdateProfileImageRequest {
+    return UpdateProfileImageRequestSchema.parse(data);
+  }
 
-    return null;
+  static validateUserId(data: any): string {
+    const { id } = UserIdSchema.parse({ id: data });
+    return id;
   }
 
   static async registerUser(
-    data: RegisterRequest,
+    requestData: any,
     env: Env
   ): Promise<RegisterResponse> {
-    const validationError = this.validateRegistrationInput(data);
-    if (validationError) {
-      throw new Error(validationError);
-    }
+    const data = this.validateRegistrationInput(requestData);
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
@@ -148,14 +91,8 @@ export class AuthService {
     };
   }
 
-  static async login(data: LoginRequest, env: Env): Promise<LoginResponse> {
-    if (!data.email || !data.password) {
-      throw new Error('Email and password are required');
-    }
-
-    if (!this.validateEmail(data.email)) {
-      throw new Error('Invalid email');
-    }
+  static async login(requestData: any, env: Env): Promise<LoginResponse> {
+    const data = this.validateLoginInput(requestData);
 
     const normalizedEmail = data.email.toLowerCase().trim();
 
@@ -212,17 +149,12 @@ export class AuthService {
   }
 
   static async changePassword(
-    userId: string,
-    passwordData: ChangePasswordRequest,
+    userIdData: any,
+    passwordRequestData: any,
     env: Env
   ): Promise<ChangePasswordResponse> {
-    if (!passwordData.currentPassword || !passwordData.newPassword) {
-      throw new Error('Current password and new password are required');
-    }
-
-    if (!this.validatePassword(passwordData.newPassword)) {
-      throw new Error('Password must be at least 8 characters long');
-    }
+    const userId = this.validateUserId(userIdData);
+    const passwordData = this.validateChangePasswordInput(passwordRequestData);
 
     // Find user by ID
     const user = await env.DB.prepare(
@@ -272,17 +204,12 @@ export class AuthService {
   }
 
   static async deactivateUser(
-    userId: string,
-    adminUserId: string,
+    userIdData: any,
+    adminUserIdData: any,
     env: Env
   ): Promise<DeactivateUserResponse> {
-    if (!adminUserId) {
-      throw new Error('You are not authorized');
-    }
-
-    if (!userId) {
-      throw new Error('User ID is required');
-    }
+    const userId = this.validateUserId(userIdData);
+    const adminUserId = this.validateUserId(adminUserIdData);
 
     // Check if the user to be deactivated exists and is currently active
     const userToDeactivate = await env.DB.prepare(
@@ -320,17 +247,12 @@ export class AuthService {
   }
 
   static async activateUser(
-    userId: string,
-    adminUserId: string,
+    userIdData: any,
+    adminUserIdData: any,
     env: Env
   ): Promise<ActivateUserResponse> {
-    if (!adminUserId) {
-      throw new Error('You are not authorized');
-    }
-
-    if (!userId) {
-      throw new Error('User ID is required');
-    }
+    const userId = this.validateUserId(userIdData);
+    const adminUserId = this.validateUserId(adminUserIdData);
 
     // Check if the user to be activated exists
     const userToActivate = await env.DB.prepare(
@@ -368,29 +290,12 @@ export class AuthService {
   }
 
   static async resetPassword(
-    passwordData: ResetPasswordRequest,
-    adminUserId: string,
+    passwordRequestData: any,
+    adminUserIdData: any,
     env: Env
   ): Promise<ResetPasswordResponse> {
-    if (!adminUserId) {
-      throw new Error('You are not authorized');
-    }
-
-    if (!passwordData.email) {
-      throw new Error('Email is required');
-    }
-
-    if (!passwordData.newPassword || !passwordData.confirmPassword) {
-      throw new Error('New password is required');
-    }
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      throw new Error('New password and confirm password do not match');
-    }
-
-    if (passwordData.newPassword.length < 8) {
-      throw new Error('Password should be at least 8 characters');
-    }
+    const passwordData = this.validateResetPasswordInput(passwordRequestData);
+    const adminUserId = this.validateUserId(adminUserIdData);
 
     // Get user by email
     const user = await env.DB.prepare(
@@ -431,13 +336,12 @@ export class AuthService {
   }
 
   static async updateProfileImage(
-    userId: string,
-    imageData: UpdateProfileImageRequest,
+    userIdData: any,
+    imageRequestData: any,
     env: Env
   ): Promise<UpdateProfileImageResponse> {
-    if (!userId) {
-      throw new Error('User ID is required');
-    }
+    const userId = this.validateUserId(userIdData);
+    const imageData = this.validateUpdateProfileImageInput(imageRequestData);
 
     // Get user
     const user = await env.DB.prepare(
@@ -541,12 +445,10 @@ export class AuthService {
   }
 
   static async removeProfileImage(
-    userId: string,
+    userIdData: any,
     env: Env
   ): Promise<RemoveProfileImageResponse> {
-    if (!userId) {
-      throw new Error('User ID is required');
-    }
+    const userId = this.validateUserId(userIdData);
 
     // Get user with current image
     const user = await env.DB.prepare(

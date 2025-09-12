@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authenticate } from '../middleware/auth';
 import { AuthService } from '../services/authService';
 import type { Env } from '../types/env';
+import { ZodError } from 'zod';
 
 type AuthContext = {
   Bindings: Env;
@@ -19,9 +20,27 @@ auth.post('/register', async c => {
 
     return c.json(result, 201);
   } catch (error) {
+    if (error instanceof ZodError) {
+      return c.json(
+        { 
+          error: 'Validation failed', 
+          details: error.issues.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        }, 
+        400
+      );
+    }
+
     const errorMessage =
       error instanceof Error ? error.message : 'Invalid JSON payload';
-    return c.json({ error: errorMessage }, 400);
+
+    if (errorMessage.includes('UNIQUE constraint failed')) {
+      return c.json({ error: 'User with this email already exists' }, 409);
+    }
+
+    return c.json({ error: errorMessage }, 500);
   }
 });
 
@@ -32,6 +51,19 @@ auth.post('/login', async c => {
 
     return c.json(result, 200);
   } catch (error) {
+    if (error instanceof ZodError) {
+      return c.json(
+        { 
+          error: 'Validation failed', 
+          details: error.issues.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        }, 
+        400
+      );
+    }
+
     const errorMessage =
       error instanceof Error ? error.message : 'Invalid JSON payload';
 
@@ -46,7 +78,7 @@ auth.post('/login', async c => {
       return c.json({ error: 'Invalid email or password' }, 401);
     }
 
-    return c.json({ error: errorMessage }, 400);
+    return c.json({ error: errorMessage }, 500);
   }
 });
 
@@ -191,6 +223,19 @@ auth.put('/change-password', authenticate, async c => {
 
     return c.json(result, 200);
   } catch (error) {
+    if (error instanceof ZodError) {
+      return c.json(
+        { 
+          error: 'Validation failed', 
+          details: error.issues.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        }, 
+        400
+      );
+    }
+
     const errorMessage =
       error instanceof Error ? error.message : 'Invalid JSON payload';
 
@@ -203,9 +248,6 @@ auth.put('/change-password', authenticate, async c => {
       errorMessage.includes('Invalid current password')
     ) {
       return c.json({ error: 'Invalid current password' }, 400);
-    }
-    if (errorMessage.includes('Password must be')) {
-      return c.json({ error: errorMessage }, 400);
     }
 
     return c.json({ error: errorMessage }, 500);
@@ -299,6 +341,19 @@ auth.put('/reset-password', authenticate, async c => {
 
     return c.json(result, 200);
   } catch (error) {
+    if (error instanceof ZodError) {
+      return c.json(
+        { 
+          error: 'Validation failed', 
+          details: error.issues.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        }, 
+        400
+      );
+    }
+
     const errorMessage =
       error instanceof Error ? error.message : 'Invalid request';
 
@@ -307,22 +362,7 @@ auth.put('/reset-password', authenticate, async c => {
       errorMessage.includes('not authorized') ||
       errorMessage.includes('You are not authorized')
     ) {
-      return c.json({ error: 'You are not authorized' }, 400);
-    }
-    if (errorMessage.includes('Email is required')) {
-      return c.json({ error: 'Email is required' }, 400);
-    }
-    if (errorMessage.includes('New password is required')) {
-      return c.json({ error: 'New password is required' }, 400);
-    }
-    if (errorMessage.includes('do not match')) {
-      return c.json(
-        { error: 'New password and confirm password do not match' },
-        400
-      );
-    }
-    if (errorMessage.includes('Password should be at least')) {
-      return c.json({ error: errorMessage }, 400);
+      return c.json({ error: 'You are not authorized' }, 403);
     }
     if (errorMessage.includes('User not found')) {
       return c.json({ error: 'User not found' }, 404);
