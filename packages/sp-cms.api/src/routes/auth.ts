@@ -22,13 +22,13 @@ auth.post('/register', async c => {
   } catch (error) {
     if (error instanceof ZodError) {
       return c.json(
-        { 
-          error: 'Validation failed', 
+        {
+          error: 'Validation failed',
           details: error.issues.map((e: any) => ({
             field: e.path.join('.'),
-            message: e.message
-          }))
-        }, 
+            message: e.message,
+          })),
+        },
         400
       );
     }
@@ -53,13 +53,13 @@ auth.post('/login', async c => {
   } catch (error) {
     if (error instanceof ZodError) {
       return c.json(
-        { 
-          error: 'Validation failed', 
+        {
+          error: 'Validation failed',
           details: error.issues.map((e: any) => ({
             field: e.path.join('.'),
-            message: e.message
-          }))
-        }, 
+            message: e.message,
+          })),
+        },
         400
       );
     }
@@ -225,13 +225,13 @@ auth.put('/change-password', authenticate, async c => {
   } catch (error) {
     if (error instanceof ZodError) {
       return c.json(
-        { 
-          error: 'Validation failed', 
+        {
+          error: 'Validation failed',
           details: error.issues.map((e: any) => ({
             field: e.path.join('.'),
-            message: e.message
-          }))
-        }, 
+            message: e.message,
+          })),
+        },
         400
       );
     }
@@ -343,13 +343,13 @@ auth.put('/reset-password', authenticate, async c => {
   } catch (error) {
     if (error instanceof ZodError) {
       return c.json(
-        { 
-          error: 'Validation failed', 
+        {
+          error: 'Validation failed',
           details: error.issues.map((e: any) => ({
             field: e.path.join('.'),
-            message: e.message
-          }))
-        }, 
+            message: e.message,
+          })),
+        },
         400
       );
     }

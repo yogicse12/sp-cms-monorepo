@@ -86,6 +86,7 @@ export class AuthService {
         id: userId,
         email: normalizedEmail,
         name: data.name,
+        isActive: true,
         createdAt,
       },
     };
@@ -143,6 +144,7 @@ export class AuthService {
         id: user.id as string,
         email: user.email as string,
         name: user.name as string,
+        isActive: user.is_active as boolean,
         createdAt: user.created_at as string,
       },
     };
@@ -432,6 +434,7 @@ export class AuthService {
           email: (updatedUser as any).email,
           name: (updatedUser as any).name,
           imageUrl: (updatedUser as any).image_url,
+          isActive: (updatedUser as any).is_active,
           createdAt: (updatedUser as any).created_at,
         },
       };
@@ -519,6 +522,7 @@ export class AuthService {
           email: (updatedUser as any).email,
           name: (updatedUser as any).name,
           imageUrl: (updatedUser as any).image_url, // Should be null
+          isActive: (updatedUser as any).is_active,
           createdAt: (updatedUser as any).created_at,
         },
       };

@@ -7,7 +7,11 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const UserSchema = z.object({
   id: z.uuid(),
   email: z.email('Invalid email format').toLowerCase(),
-  name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters').trim(),
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .max(100, 'Name must be less than 100 characters')
+    .trim(),
   passwordHash: z.string(),
   imageUrl: z.url().nullable().optional(),
   isActive: z.boolean().default(true),
@@ -20,14 +24,17 @@ export const PublicUserSchema = UserSchema.omit({ passwordHash: true });
 
 // Register Request Schema
 export const RegisterRequestSchema = z.object({
-  email: z.email('Invalid email format')
+  email: z
+    .email('Invalid email format')
     .toLowerCase()
     .trim()
-    .refine((email) => emailRegex.test(email), 'Invalid email format'),
-  password: z.string()
+    .refine(email => emailRegex.test(email), 'Invalid email format'),
+  password: z
+    .string()
     .min(8, 'Password must be at least 8 characters long')
     .max(128, 'Password must be less than 128 characters'),
-  name: z.string()
+  name: z
+    .string()
     .min(1, 'Name is required')
     .max(100, 'Name must be less than 100 characters')
     .trim(),
@@ -35,45 +42,53 @@ export const RegisterRequestSchema = z.object({
 
 // Login Request Schema
 export const LoginRequestSchema = z.object({
-  email: z.email('Invalid email format')
-    .toLowerCase()
-    .trim(),
-  password: z.string()
-    .min(1, 'Password is required'),
+  email: z.email('Invalid email format').toLowerCase().trim(),
+  password: z.string().min(1, 'Password is required'),
 });
 
 // Change Password Request Schema
 export const ChangePasswordRequestSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string()
+  newPassword: z
+    .string()
     .min(8, 'New password must be at least 8 characters long')
     .max(128, 'New password must be less than 128 characters'),
 });
 
 // Reset Password Request Schema
-export const ResetPasswordRequestSchema = z.object({
-  email: z.email('Invalid email format')
-    .toLowerCase()
-    .trim(),
-  newPassword: z.string()
-    .min(8, 'New password must be at least 8 characters long')
-    .max(128, 'New password must be less than 128 characters'),
-  confirmPassword: z.string()
-    .min(8, 'Confirm password must be at least 8 characters long')
-    .max(128, 'Confirm password must be less than 128 characters'),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: 'New password and confirm password do not match',
-  path: ['confirmPassword'],
-});
+export const ResetPasswordRequestSchema = z
+  .object({
+    email: z.email('Invalid email format').toLowerCase().trim(),
+    newPassword: z
+      .string()
+      .min(8, 'New password must be at least 8 characters long')
+      .max(128, 'New password must be less than 128 characters'),
+    confirmPassword: z
+      .string()
+      .min(8, 'Confirm password must be at least 8 characters long')
+      .max(128, 'Confirm password must be less than 128 characters'),
+  })
+  .refine(data => data.newPassword === data.confirmPassword, {
+    message: 'New password and confirm password do not match',
+    path: ['confirmPassword'],
+  });
 
 // Update Profile Image Request Schema
 export const UpdateProfileImageRequestSchema = z.object({
   file: z.instanceof(ArrayBuffer).or(z.instanceof(File)),
-  fileName: z.string()
+  fileName: z
+    .string()
     .min(1, 'File name is required')
-    .regex(/\.(jpg|jpeg|png|gif|webp)$/i, 'Invalid file type. Only images are allowed'),
-  contentType: z.string()
-    .regex(/^image\/(jpeg|jpg|png|gif|webp)$/i, 'Invalid content type. Only images are allowed'),
+    .regex(
+      /\.(jpg|jpeg|png|gif|webp)$/i,
+      'Invalid file type. Only images are allowed'
+    ),
+  contentType: z
+    .string()
+    .regex(
+      /^image\/(jpeg|jpg|png|gif|webp)$/i,
+      'Invalid content type. Only images are allowed'
+    ),
 });
 
 // User ID Schema for validation
@@ -136,16 +151,26 @@ export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;
 export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequestSchema>;
-export type UpdateProfileImageRequest = z.infer<typeof UpdateProfileImageRequestSchema>;
+export type UpdateProfileImageRequest = z.infer<
+  typeof UpdateProfileImageRequestSchema
+>;
 export type UserId = z.infer<typeof UserIdSchema>;
 export type AdminActionRequest = z.infer<typeof AdminActionRequestSchema>;
 
 // Response Types
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
 export type RegisterResponse = z.infer<typeof RegisterResponseSchema>;
-export type ChangePasswordResponse = z.infer<typeof ChangePasswordResponseSchema>;
+export type ChangePasswordResponse = z.infer<
+  typeof ChangePasswordResponseSchema
+>;
 export type ResetPasswordResponse = z.infer<typeof ResetPasswordResponseSchema>;
-export type UpdateProfileImageResponse = z.infer<typeof UpdateProfileImageResponseSchema>;
-export type RemoveProfileImageResponse = z.infer<typeof RemoveProfileImageResponseSchema>;
-export type DeactivateUserResponse = z.infer<typeof DeactivateUserResponseSchema>;
+export type UpdateProfileImageResponse = z.infer<
+  typeof UpdateProfileImageResponseSchema
+>;
+export type RemoveProfileImageResponse = z.infer<
+  typeof RemoveProfileImageResponseSchema
+>;
+export type DeactivateUserResponse = z.infer<
+  typeof DeactivateUserResponseSchema
+>;
 export type ActivateUserResponse = z.infer<typeof ActivateUserResponseSchema>;

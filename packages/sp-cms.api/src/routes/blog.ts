@@ -28,13 +28,13 @@ blog.post('/add', authenticate, async c => {
   } catch (error) {
     if (error instanceof ZodError) {
       return c.json(
-        { 
-          error: 'Validation failed', 
+        {
+          error: 'Validation failed',
           details: error.issues.map((e: any) => ({
             field: e.path.join('.'),
-            message: e.message
-          }))
-        }, 
+            message: e.message,
+          })),
+        },
         400
       );
     }
@@ -61,22 +61,19 @@ blog.get('/get-with-pagination', authenticate, async c => {
       search: c.req.query('search'),
     };
 
-    const result = await BlogService.getPostsWithPagination(
-      queryParams,
-      c.env
-    );
+    const result = await BlogService.getPostsWithPagination(queryParams, c.env);
 
     return c.json(result, 200);
   } catch (error) {
     if (error instanceof ZodError) {
       return c.json(
-        { 
-          error: 'Invalid query parameters', 
+        {
+          error: 'Invalid query parameters',
           details: error.issues.map((e: any) => ({
             field: e.path.join('.'),
-            message: e.message
-          }))
-        }, 
+            message: e.message,
+          })),
+        },
         400
       );
     }
@@ -110,19 +107,20 @@ blog.get('/fetch/:id', authenticate, async c => {
   } catch (error) {
     if (error instanceof ZodError) {
       return c.json(
-        { 
-          error: 'Invalid post ID format', 
+        {
+          error: 'Invalid post ID format',
           details: error.issues.map((e: any) => ({
             field: e.path.join('.'),
-            message: e.message
-          }))
-        }, 
+            message: e.message,
+          })),
+        },
         400
       );
     }
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+
     if (errorMessage.includes('Post not found')) {
       return c.json({ error: errorMessage }, 404);
     }
@@ -142,18 +140,19 @@ blog.put('/update/:id', authenticate, async c => {
   } catch (error) {
     if (error instanceof ZodError) {
       return c.json(
-        { 
-          error: 'Validation failed', 
+        {
+          error: 'Validation failed',
           details: error.issues.map((e: any) => ({
             field: e.path.join('.'),
-            message: e.message
-          }))
-        }, 
+            message: e.message,
+          })),
+        },
         400
       );
     }
 
-    const errorMessage = error instanceof Error ? error.message : 'Invalid JSON payload';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Invalid JSON payload';
 
     if (errorMessage.includes('Post not found')) {
       return c.json({ error: errorMessage }, 404);
